@@ -30,9 +30,10 @@ async function main() {
   const dbUrl =
     process.env.DATABASE_URL ||
     process.env.POSTGRES_URL ||
-    'postgresql://neondb_owner:npg_kOJv6ut1Sbjq@ep-autumn-sky-awe3cgij-pooler.c-12.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
+    'postgresql://neondb_owner:npg_Y3hiK4JNXqsx@ep-quiet-darkness-auh729zw-pooler.c-10.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
 
   console.log('🔄 Connecting to Neon PostgreSQL...');
+
 
   const client = new Client({
     connectionString: dbUrl,
