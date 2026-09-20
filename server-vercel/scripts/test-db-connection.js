@@ -2,13 +2,13 @@ const { Client } = require('pg');
 
 const DATABASE_URL =
   process.env.DATABASE_URL ||
-  'postgresql://neondb_owner:npg_Y3hiK4JNXqsx@ep-quiet-darkness-auh729zw-pooler.c-10.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
+  'postgresql://neondb_owner:npg_GHlkmV5Ii9tC@ep-lingering-credit-avo41viw-pooler.c-11.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
 
 async function verifyDatabase() {
   console.log('====================================================');
   console.log('🔍 Neon PostgreSQL Connection Diagnostic Check');
   console.log('====================================================');
-  console.log(`Endpoint: ep-quiet-darkness-auh729zw-pooler.c-10.us-east-1.aws.neon.tech`);
+  console.log(`Endpoint: ep-lingering-credit-avo41viw-pooler.c-11.us-east-1.aws.neon.tech`);
   console.log(`Database: neondb`);
   console.log('Connecting to Neon PostgreSQL...');
 

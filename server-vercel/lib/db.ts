@@ -6,7 +6,7 @@ let pool: any = null;
 let memDbPool: any = null;
 
 const DEFAULT_NEON_URL =
-  'postgresql://neondb_owner:npg_Y3hiK4JNXqsx@ep-quiet-darkness-auh729zw-pooler.c-10.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
+  'postgresql://neondb_owner:npg_GHlkmV5Ii9tC@ep-lingering-credit-avo41viw-pooler.c-11.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
 
 
 function getMemDbPool() {
