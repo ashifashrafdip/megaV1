@@ -1,0 +1,17 @@
+# Prevent Vercel from mistaking desktop Python application for a serverless function
+main.py
+*.py
+requirements.txt
+AutomationHub.spec
+morelogin_automation/
+device_browser/
+Source file/
+selfie.iife.js
+video.iife.js
+config.json
+server/
+dist/
+dist_protected/
+build/
+*.zip
+*.exe

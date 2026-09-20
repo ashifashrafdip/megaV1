@@ -5,6 +5,9 @@ import path from 'path';
 let pool: any = null;
 let memDbPool: any = null;
 
+const DEFAULT_NEON_URL =
+  'postgresql://neondb_owner:npg_kOJv6ut1Sbjq@ep-autumn-sky-awe3cgij-pooler.c-12.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
+
 function getMemDbPool() {
   if (!memDbPool) {
     const { newDb } = require('pg-mem');
@@ -24,16 +27,29 @@ function getMemDbPool() {
 
 export function getPool() {
   if (!pool) {
-    const connectionString = process.env.DATABASE_URL;
-    if (!connectionString || connectionString === 'memory' || !connectionString.startsWith('postgres')) {
-      console.log('ℹ️  Using in-memory PostgreSQL emulator (Set DATABASE_URL in .env to connect to Neon).');
+    const connectionString =
+      process.env.DATABASE_URL ||
+      process.env.POSTGRES_URL ||
+      process.env.DATABASE_URL_UNPOOLED ||
+      process.env.POSTGRES_PRISMA_URL ||
+      DEFAULT_NEON_URL;
+
+    if (connectionString === 'memory') {
+      console.log('ℹ️  Using in-memory PostgreSQL emulator.');
       pool = getMemDbPool();
       return pool;
     }
-    pool = new Pool({ connectionString });
+
+    try {
+      pool = new Pool({ connectionString });
+    } catch (err) {
+      console.error('Failed to initialize Neon pool, falling back to in-memory:', err);
+      pool = getMemDbPool();
+    }
   }
   return pool;
 }
+
 
 export async function query<T = any>(
   text: string,

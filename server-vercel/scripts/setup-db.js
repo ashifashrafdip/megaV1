@@ -27,14 +27,13 @@ function loadEnv() {
 
 async function main() {
   loadEnv();
-  const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) {
-    console.error('\n❌ ERROR: DATABASE_URL is not set.');
-    console.error('Please configure your Neon connection string in .env before running db:init\n');
-    process.exit(1);
-  }
+  const dbUrl =
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    'postgresql://neondb_owner:npg_kOJv6ut1Sbjq@ep-autumn-sky-awe3cgij-pooler.c-12.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
 
   console.log('🔄 Connecting to Neon PostgreSQL...');
+
   const client = new Client({
     connectionString: dbUrl,
     ssl: { rejectUnauthorized: false }
