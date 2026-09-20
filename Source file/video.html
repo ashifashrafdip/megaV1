@@ -1,0 +1,158 @@
+<!doctype html>
+<html>
+    <head>
+        <title>Video Verification</title>
+        <meta id="viewportMetaTag" name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimal-ui">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="SKYPE_TOOLBAR" content="SKYPE_TOOLBAR_PARSER_COMPATIBLE" />
+        <meta charset='utf-8'>
+        <meta name="_csrf_parameter" content="_csrf" /><meta name="_csrf_header" content="X-XSRF-TOKEN" /><meta name="_csrf" content="token_csrf" />
+        <link rel="icon" type="image/png" sizes="16x16" href="./static/img/root-page/favicon/favicon.png">
+        <script type="text/javascript" src="./static/js/jquery.min.js"></script>
+        <script type="text/javascript" src="./static/js/jquery-ui.min.js"></script>
+        <link rel="stylesheet" href="./static/css/jquery-ui.min.css"/>
+        <link href="./static/css/bootstrap.min.css" rel="stylesheet">
+        <script src="./static/js/bootstrap.bundle.min.js"></script>
+        <link rel="stylesheet" href="./static/css/bootstrap-icons.css">
+        <link rel="stylesheet" href="./static/css/custom.css">
+        <link rel="stylesheet" href="./static/css/verification/wizard.css">
+        <link rel="stylesheet" href="./static/css/verification/video.css">
+    </head>
+    <body>
+
+<div id="wizard-layout-top-header">
+  <div id="top-header">
+      <div class="mp-header">
+          <img src="./static/img/verification/megapersonalsPageHeader.png" alt="" />
+      </div>
+  </div>
+</div>
+
+<div id="wizard-layout-loader">
+  <div id="wizard-layout-loader-fader" class="spinner-loader-fader" style="display:none">
+    <div class="spinner-loader">
+      <div></div><div></div><div></div><div></div><div></div><div></div>
+      <div></div><div></div><div></div><div></div><div></div><div></div>
+    </div>
+  </div>
+</div>
+
+<div class="container-fluid verification-container" id="wizard-layout-main">
+  <div id="wizard-layout-modal-backend">
+    <div id="wizard-layout-modal-backend-host" class="wizard-vanilla-modal-host" style="display:none">
+      <div class="modal-backdrop fade show"></div>
+      <div class="modal fade show" id="backend-error-modal" style="display:block">
+          <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content">
+                  <div class="modal-body text-center">
+                      <h5 class="py-3 text-danger bold" id="wizard-backend-error-message"></h5>
+                      <button id="btn-backend-error-modal" class="btn btn-success mb-3" type="button">OK</button>
+                  </div>
+              </div>
+          </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="wizard-layout-modal-blackout">
+    <div id="wizard-layout-modal-blackout-host" class="wizard-vanilla-modal-host" style="display:none">
+      <div class="modal-backdrop fade show"></div>
+      <div class="modal fade show" id="black-out-modal" style="display:block">
+          <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content">
+                  <div class="modal-body text-center">
+                      <h5 class="py-3">Instructions</h5>
+                      <button id="btn-black-out-modal" class="btn btn-success mb-3" type="button">OK</button>
+                  </div>
+              </div>
+          </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="wizard-content" style="height: 100%;">
+    
+    <!-- Video Panel: Instructions -->
+    <div id="video-panel-instructions" style="display:block">
+      <div class="verification-container-page page-photo-camera video-instructions position-relative">
+        <h6>VIDEO VERIFICATION</h6>
+        <div class="instruction-block">
+          <div id="video-instructions-visual-inner" class="instruction-block__inner fade-in">
+            <img id="video-instructions-img" src="./static/img/video-instructions/center.png" alt="Instruction" style="max-height: 200px; width: auto;" />
+            <ul id="video-instructions-list" class="list-unstyled mt-3"></ul>
+          </div>
+        </div>
+        <div id="video-instructions-load-block" class="video-instructions-load-block mb-3">
+          <div id="video-instructions-load-progress" class="text-center text-muted"></div>
+        </div>
+        <div id="video-instructions-error-block" style="display:none" class="text-center text-danger mb-2">
+          Failed to load AI model.
+          <button id="btn-video-instructions-try-fallback" class="btn btn-secondary btn-sm mt-2" type="button">Use Fallback</button>
+        </div>
+        <div class="d-flex flex-column align-items-center">
+          <button id="btn-video-instructions-proceed" class="btn btn-success" type="button" disabled>
+            <h4>I AM READY</h4>Start Video Check
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Video Panel: Record -->
+    <div id="video-panel-record" style="display:none">
+      <div class="page-video">
+        <div id="video-capture-main">
+          <button id="video-capture-close" class="close-btn position-absolute m-3 btn btn-outline-light" style="z-index: 10000;">&times;</button>
+          <div class="video-position__text text-center text-white pt-3">
+            <h5 id="video-capture-instruction">Position your face in the oval</h5>
+            <div id="video-capture-face-warning" class="text-warning fw-bold" style="display:none;">Face not detected</div>
+            <div id="video-capture-timer-host" class="fw-bold mt-1"><span id="video-capture-timer"></span></div>
+          </div>
+
+          <div id="webcam-wrapper">
+            <div class="webcam-wrapper__inner">
+              <div class="webcam-wrapper__top" data-border="top"></div>
+              <div class="webcam-wrapper__right" data-border="right"></div>
+              <div class="webcam-wrapper__bottom" data-border="bottom"></div>
+              <div class="webcam-wrapper__left" data-border="left"></div>
+            </div>
+          </div>
+
+          <video id="webcam" autoplay playsinline muted></video>
+
+          <div id="video-capture-try-inline" class="text-center mt-3" style="position:relative; z-index:10010;">
+            <button id="video-capture-try-again" class="btn btn-warning" type="button" style="display:none;">Try Again</button>
+            <button id="video-capture-fallback-try-again" class="btn btn-secondary" type="button" style="display:none;">Use Alternative</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Video Panel: Submit -->
+    <div id="video-panel-submit" style="display:none">
+      <div class="verification-container-page d-flex flex-column justify-content-center align-items-center">
+        <h4>Recording Complete</h4>
+        <p class="text-muted">Click below to submit your verification video.</p>
+        <button id="btn-video-submit-proceed" class="btn btn-success mt-3" type="button">SUBMIT VIDEO</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="./plugins/wizard/common/common.iife.js"></script>
+<script src="./plugins/wizard/video/video.iife.js"></script>
+<script>
+    VerificationWizardCommon.restrictWizardViewport();
+    VerificationWizardCommon.attachWizardAppHeightWindowListener();
+    VerificationWizardCommon.disableWizardLayoutPinchZoom();
+
+    const controller = new VerificationWizardVideo.StepVideoController({
+        verificationToken: "r1mdJDAdZyvzI29cw-9XZbcIxZfUSgdj",
+        steps: "CENTER,LEFT,RIGHT,UP",
+        imageProcessorDomain: "image-processor.agesmart.eu",
+        useWizardPluginFallback: false
+    });
+    controller.start();
+</script>
+</body>
+</html>

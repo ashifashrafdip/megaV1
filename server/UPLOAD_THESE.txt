@@ -1,0 +1,25 @@
+# Upload these files to https://automation.orionu2.xyz/ (overwrite)
+
+URGENT FIX (admin panel 500 error):
+  admin/includes/layout.php
+
+Security:
+  .htaccess
+  config.php          (require_https now true)
+
+Optional - create desktop team user (run once in browser, then DELETE):
+  install/create_team_user.php
+  -> opens: https://automation.orionu2.xyz/install/create_team_user.php
+  -> creates user: team1 / Team@12345
+
+After upload, test:
+  Admin: https://automation.orionu2.xyz/admin/login.php
+  superadmin / Admin@12345
+
+Desktop login (config.json already set):
+  api_base: https://automation.orionu2.xyz
+  app_key: dev-desktop-app-key-change-me
+  team1 / Team@12345  (after create_team_user.php)
+
+Run app:
+  python main.py

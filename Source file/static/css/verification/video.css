@@ -1,0 +1,255 @@
+/*
+ * Served as `/static/css/verification/video.css`.
+ */
+
+.invalid {
+  border: 5px solid red;
+}
+.valid {
+  border: 5px solid green;
+}
+
+@media (min-width: 992px) {
+  video {
+    transform: scaleX(-1);
+    -webkit-transform: scaleX(-1);
+  }
+}
+
+.front-camera {
+  transform: scaleX(-1);
+  -webkit-transform: scaleX(-1);
+}
+
+.close-btn {
+  cursor: pointer;
+  display: inline-block;
+  padding: 0;
+  line-height: 1;
+  user-select: none;
+  border: none;
+}
+
+/* Ensure record panel stretches to full available height. */
+#video-panel-record {
+  height: 100%;
+}
+
+/* Ensure submit panel stretches to full available height. */
+#video-panel-submit {
+  height: 100%;
+}
+
+.page-video {
+  height: 100% !important;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Dev file picker sits above #webcam-wrapper's 100vmax dimming shadow (later sibling paints over it otherwise). */
+.video-dev-upload-host {
+  position: relative;
+  z-index: 10050;
+  padding-top: 3rem;
+  pointer-events: auto;
+}
+
+@media (max-width: 991px) {
+  .page-video #webcam {
+    transform: scaleX(-1);
+    -webkit-transform: scaleX(-1);
+  }
+}
+
+.video-position__text {
+  position: relative;
+  width: 100%;
+  left: 0;
+  padding: 0 15px;
+  z-index: 99;
+}
+
+#webcam {
+  z-index: -10;
+  flex-grow: initial !important;
+  max-height: none !important;
+  height: 330px !important;
+  object-fit: cover !important;
+  width: 100% !important;
+}
+
+#webcam-wrapper {
+  position: absolute;
+  width: 200px;
+  height: 250px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.78);
+  border-radius: 43%;
+  z-index: 9;
+}
+
+.webcam-wrapper__inner {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  z-index: 9999;
+}
+
+.webcam-wrapper__top,
+.webcam-wrapper__bottom,
+.webcam-wrapper__left,
+.webcam-wrapper__right {
+  position: absolute;
+  border: 8px solid #b4b5b3;
+  background: transparent;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.webcam-wrapper__top,
+.webcam-wrapper__bottom {
+  left: -10px;
+  width: calc(100% + 20px);
+  height: 260px;
+  border-radius: 45%;
+  border-left-color: transparent;
+  border-right-color: transparent;
+}
+
+.webcam-wrapper__top {
+  top: -20px;
+  border-bottom-color: transparent;
+}
+
+.webcam-wrapper__bottom {
+  bottom: -20px;
+  border-top-color: transparent;
+}
+
+.webcam-wrapper__left,
+.webcam-wrapper__right {
+  top: 0px;
+  width: 210px;
+  height: 100%;
+  border-radius: 39%;
+  border-bottom-color: transparent;
+  border-top-color: transparent;
+}
+
+.webcam-wrapper__left {
+  left: -15px;
+  border-right-color: transparent;
+}
+
+.webcam-wrapper__right {
+  right: -15px;
+  border-left-color: transparent;
+}
+
+.success--left {
+  border-left-color: green !important;
+}
+.success--right {
+  border-right-color: green !important;
+}
+.success--top {
+  border-top-color: green !important;
+}
+.success--bottom {
+  border-bottom-color: green !important;
+}
+
+.error--left {
+  border-left-color: red !important;
+}
+.error--right {
+  border-right-color: red !important;
+}
+.error--top {
+  border-top-color: red !important;
+}
+.error--bottom {
+  border-bottom-color: red !important;
+}
+
+.flash--left {
+  border-left-color: orange !important;
+  animation: flashBlink 0.6s ease-in-out;
+}
+.flash--right {
+  border-right-color: orange !important;
+  animation: flashBlink 0.6s ease-in-out;
+}
+.flash--top {
+  border-top-color: orange !important;
+  animation: flashBlink 0.6s ease-in-out;
+}
+.flash--bottom {
+  border-bottom-color: orange !important;
+  animation: flashBlink 0.6s ease-in-out;
+}
+
+@keyframes flashBlink {
+  0% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.4;
+  }
+}
+
+/* ---- video-instructions ---- */
+
+.video-instructions-load-block {
+  max-width: 20rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.video-instructions.page-photo-camera {
+  padding-top: 60px;
+}
+
+.instruction-block {
+  border: 3px solid #adadac;
+  padding: 20px;
+  border-radius: 40px;
+  margin-bottom: 40px;
+}
+
+.instruction-block__inner {
+  transition: opacity 0.4s ease-in-out;
+}
+
+.fade-in {
+  opacity: 1;
+}
+
+.fade-out {
+  opacity: 0;
+}
+
+.video-instructions-proceed-spinner {
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  margin-right: 0.4em;
+  vertical-align: -0.1em;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  animation: video-instructions-proceed-spin 0.65s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes video-instructions-proceed-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+

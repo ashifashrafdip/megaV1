@@ -1,0 +1,267 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!doctype html>
+
+
+
+
+<html>
+    <head>
+        <title>Verification</title>
+        <meta id="viewportMetaTag" name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0, minimal-ui">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="SKYPE_TOOLBAR" content="SKYPE_TOOLBAR_PARSER_COMPATIBLE" />
+        <meta charset='utf-8'>
+        <meta name="_csrf_parameter" content="_csrf" /><meta name="_csrf_header" content="X-XSRF-TOKEN" /><meta name="_csrf" content="9c65d8ab-8314-48b8-91de-530981000873" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/static/img/root-page/favicon/favicon.png">
+        <script type="text/javascript" src="/static/js/jquery.min.js"></script>
+        <script type="text/javascript" src="/static/js/jquery-ui.min.js"></script>
+        <link rel="stylesheet" href="/static/css/jquery-ui.min.css"/>
+        <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+        <script src="/static/js/bootstrap.bundle.min.js"></script>
+        <link rel="stylesheet" href="/static/css/bootstrap-icons.css">
+        <link rel="stylesheet" href="/static/css/custom.css">
+    </head>
+    <body>
+
+<link rel="stylesheet" href="/static/css/verification/wizard.css?v=1788449540">
+
+
+
+<div id="wizard-layout-top-header">
+  <div id="top-header">
+      <div class="mp-header">
+          <img src="/static/img/verification/megapersonalsPageHeader.png" alt="" />
+      </div>
+  </div>
+</div>
+
+<div id="wizard-layout-loader">
+  
+<div id="wizard-layout-loader-fader" class="spinner-loader-fader" style="display:none">
+  <div class="spinner-loader">
+    <div></div><div></div><div></div><div></div><div></div><div></div>
+    <div></div><div></div><div></div><div></div><div></div><div></div>
+  </div>
+</div>
+
+
+</div>
+
+<div class="container-fluid verification-container" id="wizard-layout-main">
+  <div id="wizard-layout-modal-backend">
+    
+<div id="wizard-layout-modal-backend-host" class="wizard-vanilla-modal-host" style="display:none">
+  <div class="modal-backdrop fade show"></div>
+  <div class="modal fade show" id="backend-error-modal" style="display:block">
+      <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+              <div class="modal-body text-center">
+                  <h5 class="py-3 text-danger bold" id="wizard-backend-error-message"></h5>
+                  <button id="btn-backend-error-modal" class="btn btn-success mb-3" type="button">OK</button>
+              </div>
+          </div>
+      </div>
+  </div>
+</div>
+
+
+  </div>
+  <div id="wizard-layout-modal-blackout">
+    
+<div id="wizard-layout-modal-blackout-host" class="wizard-vanilla-modal-host" style="display:none">
+  <div class="modal-backdrop fade show"></div>
+  <div class="modal fade show" id="black-out-modal" style="display:block">
+      <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+              <div class="modal-body text-center">
+                  <h5 class="py-3">Use your finger to black<br>out your name, address<br>and the ID number.</h5>
+                  <h5>DO NOT black out your<br>face or your date of birth. <br>Your verification will fail.</h5>
+                  <h5 class="py-3">Pinch and Scroll<br>with two fingers.<br>Draw with single finger.</h5>
+                  <button id="btn-black-out-modal" class="btn btn-success mb-3" type="button">OK</button>
+              </div>
+          </div>
+      </div>
+  </div>
+</div>
+
+
+  </div>
+  <div id="wizard-content" style="height: 100%;">
+    
+
+<div data-selfie-panel id="selfie-panel-intro" style="display:block">
+    <div class="verification-container-page page-photo-id-uploaded position-relative">
+        <h6>PLEASE PROCEED TO THE<br />NEXT STEP AND<br />HOLD THE ID CLOSE TO<br />YOUR FACE</h6>
+        <div>
+            <img id="img-photo-selfy-sample" src="/static/img/verification/photo-selfy-sample.png"
+                alt="Selfie sample" />
+        </div>
+        <div class="d-flex flex-column justify-content-between align-items-center gap-3 my-2">
+            <button id="btn-take-photo-selfy" class="btn btn-success" type="button">
+                <h4>I AM READY</h4>TAKE SELFIE HOLDING ID
+            </button>
+            
+<img class="img-footer-logo mt-2" src='/static/img/verification/footer-logo.png' alt="" />
+<div>
+    <p class="d-flex justify-content-center fw-bold mb-0 mt-2 copyright">
+        Copyright &copy; 2026 Age Smart LDA. All Rights Reserved.
+    </p>
+    <p class="d-flex justify-content-center gap-3 fw-bold mb-0 copyright">
+        <a href="/terms" target="_blank">Terms of Use</a>
+        <a href="/privacy" target="_blank">Privacy Policy</a>
+        <a href="/billingTerms" target="_blank">Billing Questions</a>
+        <a href="/complaints" target="_blank">Report Abuse</a>
+    </p>
+</div>
+
+
+        </div>
+    </div>
+</div>
+<div data-selfie-panel id="photo-panel-camera" style="display:none">
+    <div class="verification-container-page page-photo-camera position-relative">
+        <h6 id="wizard-photo-camera-title">TAKE SELFIE HOLDING ID</h6>
+        <video id="wizard-photo-camera" class="front-camera" autoplay playsinline muted></video>
+        <p style="margin-bottom:5px;" class="d-flex align-items-center">
+            
+<svg style="width: 50px; height: 50px;" version="1.0" xmlns="http://www.w3.org/2000/svg"
+ width="128.000000pt" height="140.000000pt" viewBox="0 0 128.000000 140.000000"
+ preserveAspectRatio="xMidYMid meet">
+<g transform="translate(0.000000,140.000000) scale(0.100000,-0.100000)"
+fill="#000000" stroke="none">
+<path d="M450 1324 c-14 -7 -35 -14 -48 -14 -12 0 -32 -6 -44 -12 -40 -22
+-125 -114 -142 -152 -9 -20 -23 -51 -31 -70 -8 -19 -15 -48 -15 -64 0 -17 -5
+-34 -10 -37 -6 -3 -10 -35 -10 -69 0 -35 -7 -80 -15 -99 -11 -26 -15 -74 -15
+-171 0 -116 2 -136 17 -144 15 -9 11 -15 -25 -49 l-42 -39 0 -162 0 -162 75 0
+c71 0 75 1 75 23 0 12 4 28 9 35 7 11 10 10 15 -3 3 -9 6 -25 6 -36 0 -18 10
+-19 205 -19 l205 0 0 120 c0 165 -5 160 172 160 l138 0 0 30 c0 32 -30 70 -55
+70 -9 0 -18 7 -21 15 -4 10 -15 12 -35 8 -18 -3 -38 0 -54 11 -31 20 -61 21
+-69 1 -3 -8 -13 -15 -22 -15 -9 0 -27 -11 -39 -24 -12 -13 -40 -35 -61 -49
+-22 -13 -45 -32 -53 -41 -17 -21 -65 -21 -82 1 -8 9 -39 34 -69 56 -30 22 -65
+51 -77 64 -12 13 -29 23 -37 23 -24 0 -46 12 -40 21 12 21 78 1 97 -28 4 -7
+19 -13 32 -13 17 0 28 10 42 37 l18 38 83 3 c74 3 82 1 82 -15 0 -48 53 -80
+80 -48 7 8 21 15 31 15 11 0 19 5 19 10 0 6 11 10 25 10 15 0 25 -6 25 -14 0
+-11 10 -13 38 -9 28 4 43 0 55 -12 9 -9 21 -13 27 -10 17 10 12 355 -5 385 -8
+14 -14 51 -15 82 0 31 -4 60 -10 63 -5 3 -10 16 -10 29 0 12 -7 31 -15 42 -8
+10 -15 25 -15 32 0 7 -11 28 -25 46 -14 18 -25 37 -25 42 0 21 -110 94 -142
+94 -13 0 -36 7 -52 15 -35 18 -112 18 -146 -1z m96 -299 c10 -8 33 -15 50 -15
+65 0 174 -68 174 -107 -1 -10 -7 -29 -15 -43 -8 -14 -14 -37 -15 -52 0 -15 -4
+-30 -10 -33 -5 -3 -10 -14 -10 -23 0 -23 -98 -125 -140 -145 -36 -19 -100 -23
+-100 -7 0 6 -8 10 -17 10 -19 0 -113 88 -113 106 0 6 -7 17 -15 24 -8 7 -15
+20 -15 30 0 10 -7 23 -15 30 -17 14 -20 66 -4 75 5 4 14 17 20 28 5 12 13 29
+18 37 10 17 26 56 35 83 4 14 18 17 79 17 49 0 80 -5 93 -15z m-310 -516 c7
+-12 -13 -29 -36 -29 -23 0 -43 17 -36 29 4 6 20 11 36 11 16 0 32 -5 36 -11z"/>
+<path d="M697 323 c-11 -10 -8 -233 3 -254 10 -18 23 -19 225 -19 267 0 255
+-6 255 138 0 151 15 142 -254 142 -122 0 -226 -3 -229 -7z m161 -41 c21 -2 22
+-6 22 -91 0 -102 1 -101 -85 -98 l-50 2 -3 84 c-2 46 -1 89 1 95 4 10 47 13
+115 8z m137 -42 c0 -18 -52 -27 -67 -12 -17 17 2 33 35 30 20 -2 32 -8 32 -18z
+m0 -50 c0 -18 -52 -27 -67 -12 -17 17 2 33 35 30 20 -2 32 -8 32 -18z m107
+-62 c-14 -14 -175 -5 -179 9 -3 9 19 13 79 15 81 3 118 -6 100 -24z"/>
+</g>
+</svg>
+
+                <b style="margin: 0px 0px 0px 5px;">Be sure your ID is visible<br />in the rectangular frame</b>
+        </p>
+        <div class="d-flex flex-row align-items-center justify-content-center gap-1">
+            <div class="revert-camera-wrapper d-lg-none">
+                <div class="d-flex flex-column align-items-center">
+                    <button id="btn-revert-camera" class="btn btn-secondary" type="button"
+                        aria-label="Flip camera">
+                        <i class="bi bi-phone-flip"></i>
+                    </button>
+                </div>
+            </div>
+            <button id="btn-take-photo-camera" class="btn btn-primary" type="button">TAKE PHOTO</button>
+        </div>
+        
+    </div>
+</div>
+<div data-selfie-panel id="photo-panel-redacting" style="display:none">
+    
+<div class="verification-container-page page-redacting position-relative">
+    <h6>COVER YOUR PRIVATE INFO</h6>
+    <div class="canvas-wrapper position-relative">
+        <canvas id="canvas-id"></canvas>
+        <div id="canvas-overlay-root">
+            <div id="canvas-overlay-failed" class="canvas-load-overlay" style="display:none">
+                <button type="button" class="canvas-reload-btn btn" id="btn-canvas-retry" aria-label="Reload image"
+                    title="Reload image">
+                    <span class="canvas-reload-label">Reload</span>
+                </button>
+            </div>
+            <div id="canvas-overlay-loading" class="canvas-loading-overlay" style="display:none" role="status"
+                aria-live="polite" aria-label="Loading image">
+                <div class="canvas-preview-spinner" aria-hidden="true"></div>
+            </div>
+        </div>
+    </div>
+    <div class="d-flex flex-row justify-content-center align-items-center gap-1 mt-2">
+        <button id="btn-go-to-photo-id-redraw" class="btn btn-warning" type="button">CLEAR</button>
+        <button id="btn-go-to-photo-id-redacting" class="btn btn-success" type="button" disabled>FINISHED</button>
+        <button id="btn-go-to-photo-id-retake" class="btn btn-warning" type="button">RE-TAKE</button>
+    </div>
+    <h5 class="mt-3 mb-2">
+        <a href="#" class="text-danger instruction-link" id="btn-redacting-instruction">Instruction?</a>
+    </h5>
+    <div class="d-flex flex-column">
+        
+<img class="img-footer-logo mt-2" src='/static/img/verification/footer-logo.png' alt="" />
+<div>
+    <p class="d-flex justify-content-center fw-bold mb-0 mt-2 copyright">
+        Copyright &copy; 2026 Age Smart LDA. All Rights Reserved.
+    </p>
+    <p class="d-flex justify-content-center gap-3 fw-bold mb-0 copyright">
+        <a href="/terms" target="_blank">Terms of Use</a>
+        <a href="/privacy" target="_blank">Privacy Policy</a>
+        <a href="/billingTerms" target="_blank">Billing Questions</a>
+        <a href="/complaints" target="_blank">Report Abuse</a>
+    </p>
+</div>
+
+
+    </div>
+</div>
+
+
+</div>
+
+
+</div>
+
+
+<script src="/plugins/wizard/common/common.iife.js?v=1788449540"></script>
+<script src="/plugins/wizard/selfie/selfie.iife.js?v=1788449540"></script>
+<script>
+    VerificationWizardCommon.restrictWizardViewport();
+    VerificationWizardCommon.attachWizardAppHeightWindowListener();
+    VerificationWizardCommon.disableWizardLayoutPinchZoom();
+
+    new VerificationWizardSelfie.StepSelfyController({
+        verificationToken: "r1mdJDAdZyvzI29cw-9XZbcIxZfUSgdj",
+        imageProcessorDomain: "image-processor.agesmart.eu",
+    });
+</script>
+
+  </body>
+</html>

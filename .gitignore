@@ -1,0 +1,42 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging / builds
+dist/
+dist (2)/
+dist_protected/
+build/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Large binaries & archives
+*.zip
+*.exe
+ffmpeg.exe
+
+# Logs and databases
+*.log
+*.sqlite
+*.sqlite3
+
+# Node.js / Next.js
+node_modules/
+.next/
+out/
+
+# Environment and secrets
+.env
+.env*.local
+.env.production
+.env.development
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+.cursor/
+.idea/
+.vscode/

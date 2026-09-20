@@ -1,0 +1,145 @@
+/* Cyberpunk admin theme */
+:root {
+  --bg: #0a0e14;
+  --panel: #111820;
+  --border: #1e2d24;
+  --text: #c8d6cf;
+  --muted: #6b7f72;
+  --accent: #00ff88;
+  --accent-dim: #00cc6a;
+  --danger: #ff4466;
+  --warn: #ffcc00;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-shadow: 0 0 8px var(--accent); }
+
+.layout { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 240px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  padding: 24px 16px;
+}
+.sidebar h1 {
+  font-size: 1rem;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 24px;
+}
+.sidebar nav a {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 6px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.sidebar nav a.active, .sidebar nav a:hover {
+  background: rgba(0, 255, 136, 0.08);
+  color: var(--accent);
+}
+.main { flex: 1; padding: 24px 32px; }
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.header h2 { margin: 0; font-weight: 600; }
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.03);
+}
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; }
+.stat {
+  background: rgba(0, 255, 136, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+.stat .value { font-size: 1.8rem; color: var(--accent); font-weight: 700; }
+.stat .label { color: var(--muted); font-size: 0.85rem; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+th { color: var(--accent); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+tr:hover td { background: rgba(0, 255, 136, 0.03); }
+
+.btn {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.btn:hover { background: rgba(0, 255, 136, 0.12); }
+.btn-danger { border-color: var(--danger); color: var(--danger); }
+.btn-danger:hover { background: rgba(255, 68, 102, 0.12); }
+.btn-sm { padding: 4px 10px; font-size: 0.8rem; margin-right: 4px; }
+
+input, select, textarea {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 6px;
+  width: 100%;
+  max-width: 320px;
+}
+label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 0.85rem; }
+.form-row { margin-bottom: 14px; }
+
+.alert {
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+.alert-success { background: rgba(0, 255, 136, 0.1); border: 1px solid var(--accent-dim); color: var(--accent); }
+.alert-error { background: rgba(255, 68, 102, 0.1); border: 1px solid var(--danger); color: var(--danger); }
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+.badge-active { background: rgba(0, 255, 136, 0.15); color: var(--accent); }
+.badge-banned { background: rgba(255, 68, 102, 0.15); color: var(--danger); }
+.badge-disabled { background: rgba(255, 204, 0, 0.15); color: var(--warn); }
+
+.login-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, rgba(0,255,136,0.08), transparent 50%), var(--bg);
+}
+.login-box {
+  width: 380px;
+  padding: 32px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 0 40px rgba(0, 255, 136, 0.08);
+}
+.login-box h1 { color: var(--accent); text-align: center; margin-top: 0; }
+
+.filters { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.filters input, .filters select { max-width: 200px; }

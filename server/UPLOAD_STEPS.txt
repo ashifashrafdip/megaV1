@@ -1,0 +1,32 @@
+=== SERVER UPLOAD (ekbar korun) ===
+
+1. cPanel -> File Manager -> automation.orionu2.xyz (root folder)
+
+2. deploy-full.zip upload korun (ei folder e ache)
+
+3. deploy-full.zip select -> Extract -> Extract Files
+   (root e extract korun, "server" naam er extra folder hobe na)
+
+4. Check these folders exist:
+   includes/
+   api/
+   admin/
+   install/
+   config.php
+   .htaccess
+
+5. Browser khulun:
+   https://automation.orionu2.xyz/install/create_team_user.php
+   -> team1 / Team@12345 create hobe
+   -> tarpor create_team_user.php DELETE korun
+
+6. Admin test:
+   https://automation.orionu2.xyz/admin/login.php
+   superadmin / Admin@12345
+
+7. Desktop app:
+   python main.py
+   login: team1 / Team@12345
+
+=== ERROR FIX ===
+Jodi abar error thake, cPanel error_log pathan.

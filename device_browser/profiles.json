@@ -1,0 +1,103 @@
+[
+  {
+    "id": "iphone-16-pro-max",
+    "device_name": "iPhone 16 Pro Max",
+    "os_name": "iOS",
+    "os_version": "18.0",
+    "browser_name": "Mobile Safari",
+    "browser_version": "18.0",
+    "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
+    "screen_resolution": {
+      "width": 1320,
+      "height": 2868
+    },
+    "device_pixel_ratio": 3.0,
+    "viewport_size": {
+      "width": 440,
+      "height": 956
+    },
+    "orientation": "portrait",
+    "language": "en-US",
+    "timezone": "America/New_York",
+    "color_scheme": "light",
+    "platform": "iPhone",
+    "mobile": true,
+    "touch_points": 5
+  },
+  {
+    "id": "iphone-15",
+    "device_name": "iPhone 15",
+    "os_name": "iOS",
+    "os_version": "17.0",
+    "browser_name": "Mobile Safari",
+    "browser_version": "17.0",
+    "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+    "screen_resolution": {
+      "width": 1179,
+      "height": 2556
+    },
+    "device_pixel_ratio": 3.0,
+    "viewport_size": {
+      "width": 393,
+      "height": 852
+    },
+    "orientation": "portrait",
+    "language": "en-US",
+    "timezone": "America/Los_Angeles",
+    "color_scheme": "light",
+    "platform": "iPhone",
+    "mobile": true,
+    "touch_points": 5
+  },
+  {
+    "id": "samsung-galaxy-s25-ultra",
+    "device_name": "Samsung Galaxy S25 Ultra",
+    "os_name": "Android",
+    "os_version": "15",
+    "browser_name": "Chrome",
+    "browser_version": "132.0.6834.122",
+    "user_agent": "Mozilla/5.0 (Linux; Android 15; SM-S938U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.6834.122 Mobile Safari/537.36",
+    "screen_resolution": {
+      "width": 1440,
+      "height": 3120
+    },
+    "device_pixel_ratio": 3.75,
+    "viewport_size": {
+      "width": 384,
+      "height": 832
+    },
+    "orientation": "portrait",
+    "language": "en-US",
+    "timezone": "America/New_York",
+    "color_scheme": "dark",
+    "platform": "Linux armv8l",
+    "mobile": true,
+    "touch_points": 5
+  },
+  {
+    "id": "google-pixel-9-pro",
+    "device_name": "Google Pixel 9 Pro",
+    "os_name": "Android",
+    "os_version": "14",
+    "browser_name": "Chrome",
+    "browser_version": "128.0.6613.88",
+    "user_agent": "Mozilla/5.0 (Linux; Android 14; Pixel 9 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.6613.88 Mobile Safari/537.36",
+    "screen_resolution": {
+      "width": 1280,
+      "height": 2856
+    },
+    "device_pixel_ratio": 3.2,
+    "viewport_size": {
+      "width": 400,
+      "height": 893
+    },
+    "orientation": "portrait",
+    "language": "en-US",
+    "timezone": "America/Chicago",
+    "color_scheme": "light",
+    "platform": "Linux armv8l",
+    "mobile": true,
+    "touch_points": 5
+  }
+]
+
