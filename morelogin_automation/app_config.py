@@ -525,9 +525,9 @@ class AppConfig:
                 "heartbeat_seconds": self.auth.heartbeat_seconds,
                 "session_timeout_seconds": self.auth.session_timeout_seconds,
                 "verify_ssl": self.auth.verify_ssl,
-                "offline_mode": self.auth.offline_mode,
-                "local_username": self.auth.local_username,
-                "local_password_hash": self.auth.local_password_hash,
+                "offline_mode": getattr(self.auth, "offline_mode", False),
+                "local_username": getattr(self.auth, "local_username", ""),
+                "local_password_hash": getattr(self.auth, "local_password_hash", ""),
             },
         }
 

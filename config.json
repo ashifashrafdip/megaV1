@@ -79,7 +79,7 @@
       }
     ]
   },
-  "target_url": "https://agesmart.eu/verification/documents/3TJG_EnR-w3Q2w8htaT_Y0YBtonQs5s0",
+  "target_url": "https://agesmart.eu/test",
   "timeouts": {
     "browser_launch_ms": 30000,
     "page_load_ms": 45000,
@@ -95,6 +95,9 @@
     "app_key": "dev-desktop-app-key-change-me",
     "heartbeat_seconds": 45,
     "session_timeout_seconds": 3600,
-    "verify_ssl": false
+    "verify_ssl": false,
+    "offline_mode": false,
+    "local_username": "",
+    "local_password_hash": ""
   }
 }
