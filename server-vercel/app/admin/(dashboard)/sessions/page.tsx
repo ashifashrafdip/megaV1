@@ -11,8 +11,9 @@ export default function AdminSessionsPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/admin/sessions');
-      const json = await res.json();
-      if (json.ok) {
+      let json: any = null;
+      try { json = await res.json(); } catch {}
+      if (res.ok && json?.ok) {
         setSessions(json.sessions || []);
       }
     } catch (err) {
@@ -36,8 +37,9 @@ export default function AdminSessionsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: sessionId }),
       });
-      const json = await res.json();
-      if (json.ok) {
+      let json: any = null;
+      try { json = await res.json(); } catch {}
+      if (res.ok && json?.ok) {
         fetchSessions();
       }
     } catch (err) {

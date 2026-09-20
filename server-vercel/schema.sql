@@ -156,3 +156,10 @@ CREATE TABLE IF NOT EXISTS rate_limits (
     hits INT NOT NULL DEFAULT 1,
     window_start TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Synchronize SERIAL sequences with seeded rows to prevent duplicate key errors
+SELECT setval('users_id_seq', GREATEST((SELECT COALESCE(MAX(id), 1) FROM users), 1));
+SELECT setval('roles_id_seq', GREATEST((SELECT COALESCE(MAX(id), 1) FROM roles), 3));
+SELECT setval('licenses_id_seq', GREATEST((SELECT COALESCE(MAX(id), 1) FROM licenses), 1));
+SELECT setval('settings_id_seq', GREATEST((SELECT COALESCE(MAX(id), 1) FROM settings), 1));
+

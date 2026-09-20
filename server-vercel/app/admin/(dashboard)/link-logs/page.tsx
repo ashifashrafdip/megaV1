@@ -25,8 +25,9 @@ export default function AdminLinkLogsPage() {
     setLoading(true);
     try {
       const res = await fetch(`/api/admin/link-logs?q=${encodeURIComponent(search)}&limit=100`);
-      const json = await res.json();
-      if (json.ok) {
+      let json: any = null;
+      try { json = await res.json(); } catch {}
+      if (res.ok && json?.ok) {
         setLogs(json.logs || []);
         setTotal(json.total || 0);
       }
@@ -57,8 +58,9 @@ export default function AdminLinkLogsPage() {
     if (!confirm('Delete this link log?')) return;
     try {
       const res = await fetch(`/api/admin/link-logs?id=${id}`, { method: 'DELETE' });
-      const json = await res.json();
-      if (json.ok) {
+      let json: any = null;
+      try { json = await res.json(); } catch {}
+      if (res.ok && json?.ok) {
         fetchLogs();
       }
     } catch (err) {

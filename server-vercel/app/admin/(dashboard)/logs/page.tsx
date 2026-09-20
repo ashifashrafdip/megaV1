@@ -12,8 +12,9 @@ export default function AdminLogsPage() {
     setLoading(true);
     try {
       const res = await fetch(`/api/admin/logs?type=${type}`);
-      const json = await res.json();
-      if (json.ok) {
+      let json: any = null;
+      try { json = await res.json(); } catch {}
+      if (res.ok && json?.ok) {
         setLogs(json.logs || []);
       }
     } catch (err) {

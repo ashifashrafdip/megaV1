@@ -20,8 +20,9 @@ export default function AdminSettingsPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/admin/settings');
-      const json = await res.json();
-      if (json.ok) {
+      let json: any = null;
+      try { json = await res.json(); } catch {}
+      if (res.ok && json?.ok) {
         setSettings(json.settings || {});
         setIsSuper(json.is_super || false);
       }
@@ -46,9 +47,10 @@ export default function AdminSettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),
       });
-      const json = await res.json();
-      if (!res.ok || !json.ok) {
-        setMsg({ type: 'error', text: json.message || 'Failed to save settings' });
+      let json: any = null;
+      try { json = await res.json(); } catch {}
+      if (!res.ok || !json?.ok) {
+        setMsg({ type: 'error', text: json?.message || `Failed to save settings (Server returned ${res.status})` });
         return;
       }
       setMsg({ type: 'success', text: 'Settings saved successfully!' });

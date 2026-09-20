@@ -11,8 +11,9 @@ export default function AdminDevicesPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/admin/devices');
-      const json = await res.json();
-      if (json.ok) {
+      let json: any = null;
+      try { json = await res.json(); } catch {}
+      if (res.ok && json?.ok) {
         setDevices(json.devices || []);
       }
     } catch (err) {
@@ -34,8 +35,9 @@ export default function AdminDevicesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ device_row_id: id, action }),
       });
-      const json = await res.json();
-      if (json.ok) {
+      let json: any = null;
+      try { json = await res.json(); } catch {}
+      if (res.ok && json?.ok) {
         fetchDevices();
       }
     } catch (err) {

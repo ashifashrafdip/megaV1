@@ -3,6 +3,8 @@ import { query } from '@/lib/db';
 import { jsonError, jsonOk } from '@/lib/helpers';
 import { getAdminSession } from '@/lib/admin-auth';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const admin = await getAdminSession();
   if (!admin) {
@@ -55,6 +57,7 @@ export async function GET() {
       },
     });
   } catch (err: any) {
+    if (err?.digest === 'DYNAMIC_SERVER_USAGE') throw err;
     console.error('Stats error:', err);
     return jsonError('server_error', err.message || 'Error fetching stats', 500);
   }

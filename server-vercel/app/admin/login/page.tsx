@@ -23,9 +23,15 @@ export default function AdminLoginPage() {
         body: JSON.stringify({ username, password }),
       });
 
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        setError(data.message || 'Invalid login credentials');
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        // Non-JSON response
+      }
+
+      if (!res.ok || !data?.ok) {
+        setError(data?.message || `Login failed (Server returned ${res.status})`);
         setLoading(false);
         return;
       }

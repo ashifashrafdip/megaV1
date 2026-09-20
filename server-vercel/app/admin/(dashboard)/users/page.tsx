@@ -33,8 +33,13 @@ export default function AdminUsersPage() {
     setLoading(true);
     try {
       const res = await fetch(`/api/admin/users?q=${encodeURIComponent(search)}`);
-      const json = await res.json();
-      if (json.ok) {
+      let json: any = null;
+      try {
+        json = await res.json();
+      } catch {
+        // Non-JSON response
+      }
+      if (res.ok && json?.ok) {
         setUsers(json.users || []);
         setRoles(json.roles || []);
       }
@@ -82,9 +87,19 @@ export default function AdminUsersPage() {
           ...payload,
         }),
       });
-      const json = await res.json();
-      if (!res.ok || !json.ok) {
-        setFormMsg({ type: 'error', text: json.message || 'Operation failed' });
+
+      let json: any = null;
+      try {
+        json = await res.json();
+      } catch {
+        // Non-JSON response (e.g. 500 HTML error page)
+      }
+
+      if (!res.ok || !json?.ok) {
+        setFormMsg({
+          type: 'error',
+          text: json?.message || `Request failed with server status ${res.status}`,
+        });
         setSubmitting(false);
         return;
       }

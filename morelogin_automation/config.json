@@ -98,11 +98,11 @@
   "headless": false,
   "auth": {
     "enabled": true,
-    "api_base": "https://automation.orionu2.xyz",
+    "api_base": "http://localhost:3015",
     "app_key": "dev-desktop-app-key-change-me",
     "heartbeat_seconds": 45,
     "session_timeout_seconds": 3600,
-    "verify_ssl": true
+    "verify_ssl": false
   },
   "file1_path": "C:\\Users\\ASHIF\\Downloads\\New folder\\New folder\\New folder (2)\\0729(12).mp4",
   "file2_path": "C:\\Users\\ASHIF\\Downloads\\New folder\\New folder\\New folder (2)\\0729(13).mp4",

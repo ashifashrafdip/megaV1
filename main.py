@@ -3784,6 +3784,56 @@ class MainWindow(QMainWindow):
         event.accept()
 
 
+def ensure_local_auth_server(auth_settings: AuthSettings) -> None:
+    """Ensure local auth server is running if api_base points to localhost."""
+    if not auth_settings or not auth_settings.api_base:
+        return
+    api_base = auth_settings.api_base.lower()
+    if "localhost" not in api_base and "127.0.0.1" not in api_base:
+        return
+
+    import urllib.request
+    try:
+        req = urllib.request.Request(f"{auth_settings.api_base}/api/login.php", method="POST")
+        req.add_header("Content-Type", "application/json")
+        with urllib.request.urlopen(req, data=b"{}", timeout=1.0) as resp:
+            return
+    except urllib.error.HTTPError:
+        return
+    except Exception:
+        pass
+
+    import subprocess
+    import shutil
+    base_dir = Path(__file__).resolve().parent
+    server_dir = base_dir / "server-vercel"
+    if not server_dir.is_dir():
+        server_dir = Path(sys.executable).resolve().parent / "server-vercel"
+    if not server_dir.is_dir():
+        return
+
+    from urllib.parse import urlparse
+    parsed = urlparse(auth_settings.api_base)
+    port = parsed.port or 3015
+
+    flags = 0
+    if sys.platform == "win32":
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+
+    npx = shutil.which("npx") or "npx.cmd"
+    try:
+        subprocess.Popen(
+            [npx, "next", "start", "-p", str(port)],
+            cwd=str(server_dir),
+            creationflags=flags,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        time.sleep(1.5)
+    except Exception as exc:
+        LOGGER.warning("Could not auto-start local auth server: %s", exc)
+
+
 def main() -> int:
     import os
 
@@ -3824,6 +3874,8 @@ def main() -> int:
     if not ok:
         LOGGER.error("Protection check failed: %s", reason)
         return 1
+
+    ensure_local_auth_server(config.auth)
 
     auth_session = require_login(config.auth)
     if not auth_session or not auth_session.is_authenticated:
