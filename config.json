@@ -91,7 +91,7 @@
   "headless": false,
   "auth": {
     "enabled": true,
-    "api_base": "https://automation.orionu2.xyz",
+    "api_base": "https://mega-v1-server.vercel.app",
     "app_key": "dev-desktop-app-key-change-me",
     "heartbeat_seconds": 45,
     "session_timeout_seconds": 3600,
