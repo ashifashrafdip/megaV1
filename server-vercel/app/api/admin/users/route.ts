@@ -12,7 +12,14 @@ function parseExpiryDate(raw: any): string | null {
   if (!trimmed) return null;
   const parsed = new Date(trimmed);
   if (isNaN(parsed.getTime())) return null;
-  return parsed.toISOString();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const YYYY = parsed.getUTCFullYear();
+  const MM = pad(parsed.getUTCMonth() + 1);
+  const DD = pad(parsed.getUTCDate());
+  const hh = pad(parsed.getUTCHours());
+  const mm = pad(parsed.getUTCMinutes());
+  const ss = pad(parsed.getUTCSeconds());
+  return `${YYYY}-${MM}-${DD} ${hh}:${mm}:${ss}`;
 }
 
 export async function GET(req: NextRequest) {

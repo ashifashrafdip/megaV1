@@ -29,6 +29,21 @@ export function getPool(): mysql.Pool {
   return pool;
 }
 
+function sanitizeParam(val: any): any {
+  if (val instanceof Date) {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${val.getUTCFullYear()}-${pad(val.getUTCMonth() + 1)}-${pad(val.getUTCDate())} ${pad(val.getUTCHours())}:${pad(val.getUTCMinutes())}:${pad(val.getUTCSeconds())}`;
+  }
+  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val)) {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+    }
+  }
+  return val;
+}
+
 function transformSql(text: string, params: any[]): { sql: string; params: any[] } {
   if (!params || params.length === 0) {
     let sql = text.replace(/\bILIKE\b/gi, 'LIKE');
@@ -45,13 +60,13 @@ function transformSql(text: string, params: any[]): { sql: string; params: any[]
   let sql = text.replace(/\$(\d+)/g, (fullMatch, numStr) => {
     const idx = parseInt(numStr, 10) - 1;
     if (idx >= 0 && idx < params.length) {
-      mysqlParams.push(params[idx]);
+      mysqlParams.push(sanitizeParam(params[idx]));
       return '?';
     }
     return fullMatch;
   });
 
-  const finalParams = mysqlParams.length > 0 ? mysqlParams : params;
+  const finalParams = mysqlParams.length > 0 ? mysqlParams : params.map(sanitizeParam);
 
   // Map PostgreSQL ILIKE to MySQL LIKE
   sql = sql.replace(/\bILIKE\b/gi, 'LIKE');

@@ -97,18 +97,8 @@ export async function POST(req: NextRequest) {
 
   const singleSession = (await getSetting('single_session', '1')) === '1';
   if (singleSession) {
-    const activeRes = await query<{ id: number; device_id: string }>(
-      'SELECT id, device_id FROM sessions WHERE user_id = $1 AND is_active = 1 AND expires_at > NOW() LIMIT 1',
-      [user.id]
-    );
-    if (activeRes.rows.length > 0) {
-      if (activeRes.rows[0].device_id === deviceId) {
-        await query('UPDATE sessions SET is_active = 0 WHERE id = $1', [activeRes.rows[0].id]);
-      } else {
-        await logLoginHistory(user.id, username, false, ip, deviceId, pcName, 'session_active');
-        return jsonError('session_active', 'Account is already active on another device', 409);
-      }
-    }
+    // Terminate any previous active sessions for this user so this new login becomes the single active session
+    await query('UPDATE sessions SET is_active = 0, force_logout = 1 WHERE user_id = $1 AND is_active = 1', [user.id]);
   }
 
   const userAgent = req.headers.get('user-agent');
