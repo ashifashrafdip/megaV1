@@ -77,6 +77,14 @@ function issue_tokens(int $userId, int $sessionId, string $role): array
 function bearer_user(): ?array
 {
     $header = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+    if (!$header && function_exists('getallheaders')) {
+        $all = getallheaders();
+        $header = $all['Authorization'] ?? $all['authorization'] ?? '';
+    }
+    if (!$header && function_exists('apache_request_headers')) {
+        $all = apache_request_headers();
+        $header = $all['Authorization'] ?? $all['authorization'] ?? '';
+    }
     if (!preg_match('/Bearer\s+(\S+)/i', $header, $matches)) {
         return null;
     }

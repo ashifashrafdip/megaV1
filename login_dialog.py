@@ -136,6 +136,9 @@ class LoginDialog(QDialog):
 
 
 def require_login(settings: AuthSettings, parent=None) -> AuthSession | None:
+    if not settings.enabled:
+        return None
+
     if not settings.api_base:
         QMessageBox.critical(
             parent,

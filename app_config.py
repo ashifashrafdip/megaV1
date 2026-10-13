@@ -220,15 +220,15 @@ class WindowSize:
 
 @dataclass(frozen=True)
 class CameraOutputSize:
-    width: int = 1080
-    height: int = 1980
+    width: int = 1280
+    height: int = 720
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any] | None) -> "CameraOutputSize":
         raw = raw or {}
         return cls(
-            width=max(160, int(raw.get("width", 1080))),
-            height=max(160, int(raw.get("height", 1980))),
+            width=max(160, int(raw.get("width", 1280))),
+            height=max(160, int(raw.get("height", 720))),
         )
 
 
@@ -306,7 +306,7 @@ class MultiloginSettings:
 
 @dataclass(frozen=True)
 class AdsPowerSettings:
-    api_base: str = "http://local.adspower.net:50325"
+    api_base: str = "http://127.0.0.1:50325"
     profile_id: str = ""
     profile_no: str = ""
     api_key: str = ""
@@ -320,7 +320,7 @@ class AdsPowerSettings:
     def from_dict(cls, raw: dict[str, Any] | None) -> "AdsPowerSettings":
         raw = raw or {}
         return cls(
-            api_base=str(raw.get("api_base", "http://local.adspower.net:50325")).rstrip("/"),
+            api_base=str(raw.get("api_base", "http://127.0.0.1:50325")).rstrip("/"),
             profile_id=str(raw.get("profile_id", "")).strip(),
             profile_no=str(raw.get("profile_no", "")).strip(),
             api_key=str(raw.get("api_key", "")).strip(),
@@ -334,6 +334,30 @@ class AdsPowerSettings:
     @property
     def identifier(self) -> str:
         return self.profile_id or self.profile_no
+
+
+@dataclass(frozen=True)
+class MoreLoginSettings:
+    api_base: str = "http://127.0.0.1:40000"
+    profile_id: str = ""
+    profile_name: str = ""
+    cdp_evasion: bool = True
+    close_on_stop: bool = True
+
+    @classmethod
+    def from_dict(cls, raw: dict[str, Any] | None) -> "MoreLoginSettings":
+        raw = raw or {}
+        return cls(
+            api_base=str(raw.get("api_base", "http://127.0.0.1:40000")).rstrip("/"),
+            profile_id=str(raw.get("profile_id", "")).strip(),
+            profile_name=str(raw.get("profile_name", "")).strip(),
+            cdp_evasion=bool(raw.get("cdp_evasion", True)),
+            close_on_stop=bool(raw.get("close_on_stop", True)),
+        )
+
+    @property
+    def identifier(self) -> str:
+        return self.profile_id or self.profile_name
 
 
 @dataclass(frozen=True)
@@ -360,6 +384,7 @@ class AppConfig:
     multilogin: MultiloginSettings = field(default_factory=MultiloginSettings)
     proxy: ProxySettings = field(default_factory=ProxySettings)
     adspower: AdsPowerSettings = field(default_factory=AdsPowerSettings)
+    morelogin: MoreLoginSettings = field(default_factory=MoreLoginSettings)
     user_agent: str = ""
     window_size: WindowSize = field(default_factory=WindowSize)
     camera_output_size: CameraOutputSize = field(default_factory=CameraOutputSize)
@@ -387,6 +412,7 @@ class AppConfig:
             multilogin=MultiloginSettings.from_dict(raw.get("multilogin")),
             proxy=ProxySettings.from_dict(raw.get("proxy")),
             adspower=AdsPowerSettings.from_dict(raw.get("adspower")),
+            morelogin=MoreLoginSettings.from_dict(raw.get("morelogin")),
             user_agent=str(raw.get("user_agent", "")),
             window_size=WindowSize.from_dict(raw.get("window_size")),
             camera_output_size=CameraOutputSize.from_dict(raw.get("camera_output_size")),
@@ -443,6 +469,13 @@ class AppConfig:
                 "cdp_mask": self.adspower.cdp_mask,
                 "proxy_detection": self.adspower.proxy_detection,
                 "open_last_tabs": self.adspower.open_last_tabs,
+            },
+            "morelogin": {
+                "api_base": self.morelogin.api_base,
+                "profile_id": self.morelogin.profile_id,
+                "profile_name": self.morelogin.profile_name,
+                "cdp_evasion": self.morelogin.cdp_evasion,
+                "close_on_stop": self.morelogin.close_on_stop,
             },
             "user_agent": self.user_agent,
             "window_size": {
@@ -504,6 +537,7 @@ class AppConfig:
             multilogin=self.multilogin,
             proxy=self.proxy,
             adspower=self.adspower,
+            morelogin=self.morelogin,
             user_agent=self.user_agent,
             window_size=self.window_size,
             camera_output_size=self.camera_output_size,
@@ -522,6 +556,7 @@ class AppConfig:
             multilogin=multilogin,
             proxy=self.proxy,
             adspower=self.adspower,
+            morelogin=self.morelogin,
             user_agent=self.user_agent,
             window_size=self.window_size,
             camera_output_size=self.camera_output_size,
@@ -540,6 +575,7 @@ class AppConfig:
             multilogin=self.multilogin,
             proxy=self.proxy,
             adspower=self.adspower,
+            morelogin=self.morelogin,
             user_agent=self.user_agent,
             window_size=self.window_size,
             camera_output_size=self.camera_output_size,
@@ -558,6 +594,7 @@ class AppConfig:
             multilogin=self.multilogin,
             proxy=proxy,
             adspower=self.adspower,
+            morelogin=self.morelogin,
             user_agent=self.user_agent,
             window_size=self.window_size,
             camera_output_size=self.camera_output_size,
@@ -576,6 +613,26 @@ class AppConfig:
             multilogin=self.multilogin,
             proxy=self.proxy,
             adspower=adspower,
+            morelogin=self.morelogin,
+            user_agent=self.user_agent,
+            window_size=self.window_size,
+            camera_output_size=self.camera_output_size,
+            automation=self.automation,
+            target_url=self.target_url,
+            timeouts=self.timeouts,
+            profile_name=self.profile_name,
+            device_profile_id=self.device_profile_id,
+            headless=self.headless,
+            auth=self.auth,
+        )
+
+    def with_morelogin(self, morelogin: MoreLoginSettings) -> "AppConfig":
+        return AppConfig(
+            browser_engine=self.browser_engine,
+            multilogin=self.multilogin,
+            proxy=self.proxy,
+            adspower=self.adspower,
+            morelogin=morelogin,
             user_agent=self.user_agent,
             window_size=self.window_size,
             camera_output_size=self.camera_output_size,
@@ -594,6 +651,7 @@ class AppConfig:
             multilogin=self.multilogin,
             proxy=self.proxy,
             adspower=self.adspower,
+            morelogin=self.morelogin,
             user_agent=self.user_agent,
             window_size=self.window_size,
             camera_output_size=self.camera_output_size,

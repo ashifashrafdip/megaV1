@@ -35,8 +35,8 @@ class VirtualCameraService:
         self,
         cache_dir: str | Path | None = None,
         *,
-        output_width: int = 1080,
-        output_height: int = 1980,
+        output_width: int = 1280,
+        output_height: int = 720,
     ):
         self.cache_dir = Path(cache_dir or tempfile.gettempdir()) / "pyqt_fake_camera"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -178,8 +178,8 @@ class VirtualCameraService:
         width = self.output_width
         height = self.output_height
         return (
-            f"scale={width}:{height}:force_original_aspect_ratio=decrease:flags=lanczos,"
-            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:black,fps=30,format=yuv420p"
+            f"scale={width}:{height}:force_original_aspect_ratio=increase:flags=lanczos,"
+            f"crop={width}:{height},fps=30,format=yuv420p"
         )
 
     @staticmethod
@@ -196,7 +196,7 @@ class VirtualCameraService:
         fingerprint = hashlib.sha256(
             (
                 f"{source_path}|{source_path.stat().st_size}|"
-                f"{source_path.stat().st_mtime_ns}|{self.output_label()}|{suffix}|hq-v2"
+                f"{source_path.stat().st_mtime_ns}|{self.output_label()}|{suffix}|hq-v3"
             ).encode("utf-8")
         ).hexdigest()[:16]
         return self.cache_dir / f"{source_path.stem}-{fingerprint}{suffix}"
@@ -282,6 +282,14 @@ class VirtualCameraService:
             "-movflags",
             "+faststart",
             "-an",
+            "-map_metadata",
+            "-1",
+            "-fflags",
+            "+bitexact",
+            "-flags:v",
+            "+bitexact",
+            "-flags:a",
+            "+bitexact",
             str(output_path),
         ]
         self._run_ffmpeg(command)

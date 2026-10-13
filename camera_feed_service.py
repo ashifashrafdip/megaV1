@@ -19,6 +19,16 @@ VIDEO_SUFFIXES = {
     ".y4m",
 }
 
+IMAGE_SUFFIXES = {
+    ".bmp",
+    ".jpeg",
+    ".jpg",
+    ".png",
+    ".webp",
+}
+
+MEDIA_SUFFIXES = VIDEO_SUFFIXES | IMAGE_SUFFIXES
+
 
 @dataclass(frozen=True)
 class VirtualCameraFeed:
@@ -35,8 +45,8 @@ class VirtualCameraService:
         self,
         cache_dir: str | Path | None = None,
         *,
-        output_width: int = 1080,
-        output_height: int = 1980,
+        output_width: int = 1280,
+        output_height: int = 720,
     ):
         self.cache_dir = Path(cache_dir or tempfile.gettempdir()) / "pyqt_fake_camera"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -54,7 +64,7 @@ class VirtualCameraService:
             return None
 
         path = Path(file_path).expanduser().resolve()
-        if not path.is_file() or path.suffix.lower() not in VIDEO_SUFFIXES:
+        if not path.is_file() or path.suffix.lower() not in MEDIA_SUFFIXES:
             return None
         return self._prepare_source(path)
 
@@ -77,7 +87,7 @@ class VirtualCameraService:
                 continue
 
             path = Path(slot).expanduser().resolve()
-            if not path.is_file() or path.suffix.lower() not in VIDEO_SUFFIXES:
+            if not path.is_file() or path.suffix.lower() not in MEDIA_SUFFIXES:
                 blob_paths.append(None)
                 continue
 
@@ -174,12 +184,17 @@ class VirtualCameraService:
             return source_path if source_path.suffix.lower() in {".mp4", ".m4v"} else None
         return output_path
 
-    def _scale_filter(self) -> str:
+    def _scale_filter(self, *, pad: bool = True) -> str:
         width = self.output_width
         height = self.output_height
+        if pad:
+            return (
+                f"scale={width}:{height}:force_original_aspect_ratio=decrease:flags=lanczos,"
+                f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black,fps=30,format=yuv420p"
+            )
         return (
-            f"scale={width}:{height}:force_original_aspect_ratio=decrease:flags=lanczos,"
-            f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:black,fps=30,format=yuv420p"
+            f"scale={width}:{height}:force_original_aspect_ratio=increase:flags=lanczos,"
+            f"crop={width}:{height},fps=30,format=yuv420p"
         )
 
     @staticmethod
@@ -188,7 +203,7 @@ class VirtualCameraService:
             if not file_path:
                 continue
             path = Path(file_path).expanduser().resolve()
-            if path.is_file() and path.suffix.lower() in VIDEO_SUFFIXES:
+            if path.is_file() and path.suffix.lower() in MEDIA_SUFFIXES:
                 return path
         return None
 
@@ -196,7 +211,7 @@ class VirtualCameraService:
         fingerprint = hashlib.sha256(
             (
                 f"{source_path}|{source_path.stat().st_size}|"
-                f"{source_path.stat().st_mtime_ns}|{self.output_label()}|{suffix}|hq-v2"
+                f"{source_path.stat().st_mtime_ns}|{self.output_label()}|{suffix}|aspect-pad-v1"
             ).encode("utf-8")
         ).hexdigest()[:16]
         return self.cache_dir / f"{source_path.stem}-{fingerprint}{suffix}"
@@ -245,30 +260,34 @@ class VirtualCameraService:
 
     def _convert_to_y4m(self, ffmpeg_path: str, source_path: Path, capture_path: Path):
         capture_path.parent.mkdir(parents=True, exist_ok=True)
-        command = [
-            ffmpeg_path,
-            "-y",
-            "-i",
-            str(source_path),
+        is_image = source_path.suffix.lower() in IMAGE_SUFFIXES
+        command = [ffmpeg_path, "-y"]
+        if is_image:
+            command.extend(["-loop", "1", "-framerate", "30", "-t", "15", "-i", str(source_path)])
+        else:
+            command.extend(["-i", str(source_path)])
+        command.extend([
             "-vf",
-            self._scale_filter(),
+            self._scale_filter(pad=True),
             "-pix_fmt",
             "yuv420p",
             "-f",
             "yuv4mpegpipe",
             str(capture_path),
-        ]
+        ])
         self._run_ffmpeg(command)
 
     def _convert_to_mp4(self, ffmpeg_path: str, source_path: Path, output_path: Path):
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        command = [
-            ffmpeg_path,
-            "-y",
-            "-i",
-            str(source_path),
+        is_image = source_path.suffix.lower() in IMAGE_SUFFIXES
+        command = [ffmpeg_path, "-y"]
+        if is_image:
+            command.extend(["-loop", "1", "-framerate", "30", "-t", "15", "-i", str(source_path)])
+        else:
+            command.extend(["-i", str(source_path)])
+        command.extend([
             "-vf",
-            self._scale_filter(),
+            self._scale_filter(pad=True),
             "-c:v",
             "libx264",
             "-preset",
@@ -282,8 +301,16 @@ class VirtualCameraService:
             "-movflags",
             "+faststart",
             "-an",
+            "-map_metadata",
+            "-1",
+            "-fflags",
+            "+bitexact",
+            "-flags:v",
+            "+bitexact",
+            "-flags:a",
+            "+bitexact",
             str(output_path),
-        ]
+        ])
         self._run_ffmpeg(command)
 
     @staticmethod
@@ -303,6 +330,8 @@ class VirtualCameraService:
         source = Path(source_path).expanduser().resolve()
         if not source.is_file():
             return None
+        if source.suffix.lower() in IMAGE_SUFFIXES:
+            return 15.0
         try:
             completed = subprocess.run(
                 [

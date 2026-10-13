@@ -42,8 +42,8 @@
     "height": 720
   },
   "camera_output_size": {
-    "width": 1080,
-    "height": 1980
+    "width": 1280,
+    "height": 720
   },
   "automation": {
     "click_retries": 3,
@@ -52,7 +52,7 @@
     "capture_settle_ms": 2500,
     "post_capture_ms": 2000,
     "liveness_timeout_ms": 180000,
-    "liveness_upload_mode": "live_recording",
+    "liveness_upload_mode": "file3_swap",
     "liveness_step_ms": 6000,
     "liveness_step_jitter_ms": 800,
     "liveness_retry_count": 1,

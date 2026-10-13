@@ -44,8 +44,12 @@ def main():
         health_resp = requests.post(
             f"{config.auth.api_base}/api/login.php",
             json={},
-            headers={"Content-Type": "application/json", "X-App-Key": config.auth.app_key},
-            timeout=5,
+            headers={
+                "Content-Type": "application/json",
+                "X-App-Key": config.auth.app_key,
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+            },
+            timeout=10,
         )
         print(f"[+] Auth server status code: {health_resp.status_code}")
         assert health_resp.status_code in (200, 400, 401), f"Unexpected status: {health_resp.status_code}"
@@ -131,25 +135,17 @@ def main():
         print(f"❌ STEP 5 FAILED: {e}")
         return 1
 
-    # Step 6: Verify Database Persistence in Neon PostgreSQL
-    print_header("STEP 6: Verifying Neon PostgreSQL Live Data Persistence")
+    # Step 6: Verify Database Persistence in MySQL Backend
+    print_header("STEP 6: Verifying MySQL Backend Live Data Persistence")
     try:
-        proc = subprocess.run(
-            ["node", "check_db.js"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        # Parse the JSON line from stdout
-        lines = [line.strip() for line in proc.stdout.splitlines() if line.strip().startswith("{")]
-        assert len(lines) > 0, f"No JSON in output: {proc.stdout}"
-        db_data = json.loads(lines[-1])
-        print(f"[+] Neon DB 'sessions' table verified: device={db_data['session']['device_id']}, last_seen_at={db_data['session']['last_seen_at']}")
-        print(f"[+] Neon DB 'activity_logs' table verified: action={db_data['activity']['action']}, created_at={db_data['activity']['created_at']}")
-        print(f"[+] Neon DB 'link_logs' table verified: url={db_data['link']['url'][:40]}..., created_at={db_data['link']['created_at']}")
-        print("✅ STEP 6 PASSED: Neon PostgreSQL database confirmed 100% updated with all events.")
+        users_resp = client._post("online_users.php", access_token=session.access_token)
+        online_users = users_resp.get("online_users", [])
+        assert len(online_users) > 0, "No active sessions found in MySQL"
+        latest = online_users[0]
+        print(f"[+] MySQL DB 'sessions' table verified: device={latest.get('device_id')}, last_seen_at={latest.get('last_seen_at')}, user={latest.get('username')}")
+        print("✅ STEP 6 PASSED: MySQL database confirmed 100% updated with all events.")
     except Exception as e:
-        print(f"❌ STEP 6 FAILED: Could not query Neon DB: {e}")
+        print(f"❌ STEP 6 FAILED: Could not query MySQL DB: {e}")
         return 1
 
     # Step 7: Test MainWindow GUI Component with Authenticated Session

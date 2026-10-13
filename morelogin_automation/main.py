@@ -2178,12 +2178,10 @@ class WorkerThread(QThread):
     if (video && video.paused && !video.ended) {{
       video.play().catch(() => {{}});
     }}
-    context.fillStyle = "black";
-    context.fillRect(0, 0, outputWidth, outputHeight);
     if (video && video.readyState >= 2 && video.videoWidth) {{
       const sourceWidth = video.videoWidth;
       const sourceHeight = video.videoHeight;
-      const scale = Math.min(outputWidth / sourceWidth, outputHeight / sourceHeight);
+      const scale = Math.max(outputWidth / sourceWidth, outputHeight / sourceHeight);
       const drawWidth = Math.max(1, Math.round(sourceWidth * scale));
       const drawHeight = Math.max(1, Math.round(sourceHeight * scale));
       const offsetX = Math.floor((outputWidth - drawWidth) / 2);
@@ -2191,6 +2189,9 @@ class WorkerThread(QThread):
       try {{
         context.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
       }} catch (_) {{}}
+    }} else {{
+      context.fillStyle = "black";
+      context.fillRect(0, 0, outputWidth, outputHeight);
     }}
   }};
 

@@ -1,12 +1,12 @@
 {
-  "browser_engine": "multilogin",
+  "browser_engine": "morelogin",
   "multilogin": {
     "api_base": "https://127.0.0.1:45001",
-    "profile_id": "7ffabe8d-a81a-4f3c-a32a-1ee7b7a6ee40",
-    "folder_id": "f791d06b-43aa-429e-b079-ab9ed5078d53",
-    "token": "eyJhbGciOiJIUzUxMiJ9.eyJicGRzLmJ1Y2tldCI6Im1seC1icGRzLXByb2QtZXUtMSIsIm1hY2hpbmVJRCI6IiIsInByb2R1Y3RJRCI6Imx0Iiwid29ya3NwYWNlUm9sZSI6Im93bmVyIiwidmVyaWZpZWQiOnRydWUsInBsYW5OYW1lIjoiUHJvXzEwIChtb250aGx5KSIsInNoYXJkSUQiOiJjYmUxMzgwMC1iYmFmLTRjOGYtODBiMy0xOTdmODk2Mzk0ZjIiLCJ1c2VySUQiOiJlNDNmMmE1NC04Yzg2LTQ1YmMtYTQzZC1kZGU0YzZiYmRjMDUiLCJlbWFpbCI6ImFzaGlmYXNocmFmMjAwM0BnbWFpbC5jb20iLCJpc0F1dG9tYXRpb24iOmZhbHNlLCJ3b3Jrc3BhY2VJRCI6ImY3OTFkMDZiLTQzYWEtNDI5ZS1iMDc5LWFiOWVkNTA3OGQ1MyIsImp0aSI6IjczOWMxN2Q5LTdjMzEtNDI0YS1hY2E4LTZjZjIwNmU5YzMzNCIsInN1YiI6Ik1MWCIsImlzcyI6ImU0M2YyYTU0LThjODYtNDViYy1hNDNkLWRkZTRjNmJiZGMwNSIsImlhdCI6MTc4OTA1NTExOCwiZXhwIjoxNzg5MDU4NzE4fQ.UgO7HZmJJiAzfFoooGuY354hbUAmWVxrLGoo4EgaNnPowvmcCbvVKMH-hjB2dWoQs4Lrw-5LLog79pJwS5zpDw",
+    "profile_id": "Direct CDP (127.0.0.1:63181) (Cdp) - direct-c...",
+    "folder_id": "",
+    "token": "eyJhbGciOiJIUzUxMiJ9.eyJicGRzLmJ1Y2tldCI6Im1seC1icGRzLXByb2QtZXUtMSIsIm1hY2hpbmVJRCI6IiIsInByb2R1Y3RJRCI6Imx0Iiwid29ya3NwYWNlUm9sZSI6Im93bmVyIiwidmVyaWZpZWQiOnRydWUsInBsYW5OYW1lIjoiUHJvXzEwIChtb250aGx5KSIsInNoYXJkSUQiOiJjYmUxMzgwMC1iYmFmLTRjOGYtODBiMy0xOTdmODk2Mzk0ZjIiLCJ1c2VySUQiOiJlNDNmMmE1NC04Yzg2LTQ1YmMtYTQzZC1kZGU0YzZiYmRjMDUiLCJlbWFpbCI6ImFzaGlmYXNocmFmMjAwM0BnbWFpbC5jb20iLCJpc0F1dG9tYXRpb24iOmZhbHNlLCJ3b3Jrc3BhY2VJRCI6ImY3OTFkMDZiLTQzYWEtNDI5ZS1iMDc5LWFiOWVkNTA3OGQ1MyIsImp0aSI6Ijg1MjUwNzAxLWVjNmYtNGNlNC04ZjY4LWY3YjQxZjc0ZWFiOSIsInN1YiI6Ik1MWCIsImlzcyI6ImU0M2YyYTU0LThjODYtNDViYy1hNDNkLWRkZTRjNmJiZGMwNSIsImlhdCI6MTc5MDE5NDczMSwiZXhwIjoxNzkwMTk4MzMxfQ.kCB2Tlvn-unV3Mracd_au8lWU16197y46_JCIESPdFW96tHWyKB5WiXgjZ1hzsuH27kPPRpFUMrIzsguchaj1w",
     "api_version": "auto",
-    "direct_cdp_url": "",
+    "direct_cdp_url": "127.0.0.1:63181",
     "close_on_stop": true
   },
   "proxy": {
@@ -19,24 +19,31 @@
     "password": "ashif12"
   },
   "adspower": {
-    "api_base": "http://local.adspower.net:50325",
-    "profile_id": "k1deidiv",
-    "profile_no": "88",
-    "api_key": "",
+    "api_base": "http://127.0.0.1:50325",
+    "profile_id": "k1hnv9qa",
+    "profile_no": "1",
+    "api_key": "1ef86b7eead74870a183a08d7dea6311009db8514ff3e782",
     "api_version": "v2",
     "close_on_stop": true,
     "cdp_mask": true,
     "proxy_detection": false,
     "open_last_tabs": false
   },
-  "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+  "morelogin": {
+    "api_base": "http://127.0.0.1:40000",
+    "profile_id": "2109763382097285120",
+    "profile_name": "P-10",
+    "cdp_evasion": true,
+    "close_on_stop": true
+  },
+  "user_agent": "Mozilla/5.0 (Linux; Android 15; SM-S938U) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.6943.122 Mobile Safari/537.36",
   "window_size": {
-    "width": 1280,
-    "height": 720
+    "width": 384,
+    "height": 832
   },
   "camera_output_size": {
-    "width": 1080,
-    "height": 1980
+    "width": 720,
+    "height": 1280
   },
   "automation": {
     "click_retries": 3,
@@ -79,23 +86,23 @@
       }
     ]
   },
-  "target_url": "https://agesmart.eu/test",
+  "target_url": "https://agesmart.eu/verification/documents/KRaBfiOHCj7tPg451Ey0oDHUe11BQeHp",
   "timeouts": {
     "browser_launch_ms": 30000,
     "page_load_ms": 45000,
     "script_ms": 30000,
     "shutdown_ms": 5000
   },
-  "profile_name": "iphone-16-pro-max",
-  "device_profile_id": "iphone-16-pro-max",
+  "profile_name": "samsung-galaxy-s25-ultra",
+  "device_profile_id": "samsung-galaxy-s25-ultra",
   "headless": false,
   "auth": {
     "enabled": true,
-    "api_base": "http://localhost:3015",
+    "api_base": "https://server.ashifashraf.com",
     "app_key": "dev-desktop-app-key-change-me",
     "heartbeat_seconds": 45,
     "session_timeout_seconds": 3600,
-    "verify_ssl": false,
+    "verify_ssl": true,
     "offline_mode": false,
     "local_username": "",
     "local_password_hash": ""

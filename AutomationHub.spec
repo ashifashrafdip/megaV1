@@ -12,6 +12,9 @@ datas = [
     (str(project_dir / 'config.json'), '.'),
     (str(project_dir / 'ffmpeg.exe'), '.'),
     (str(project_dir / 'Source file'), 'Source file'),
+    (str(project_dir / 'device_browser' / 'profiles.json'), 'device_browser'),
+    (str(project_dir / 'selfie.iife.js'), '.'),
+    (str(project_dir / 'video.iife.js'), '.'),
 ]
 
 hidden_imports = [
@@ -19,12 +22,33 @@ hidden_imports = [
     'PyQt5.QtCore',
     'PyQt5.QtGui',
     'PyQt5.QtWidgets',
+    'PyQt5.QtNetwork',
+    'PyQt5.sip',
     'playwright',
     'playwright.sync_api',
     'requests',
     'urllib3',
     'imageio_ffmpeg',
     'wmi',
+    'jwt',
+    'payload_defaults',
+    'adspower_browser',
+    'morelogin_browser',
+    'multilogin_browser',
+    'camera_feed_service',
+    'video_step_automation',
+    'wizard_automation',
+    'auth_client',
+    'auth_config',
+    'auth_session',
+    'device_fingerprint',
+    'protection_stub',
+    'playwright_browser',
+    'playwright_profile_manager',
+    'temp_file_server',
+    'theme',
+    'qt_logging',
+    'login_dialog',
 ]
 
 a = Analysis(

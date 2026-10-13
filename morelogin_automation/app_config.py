@@ -220,15 +220,15 @@ class WindowSize:
 
 @dataclass(frozen=True)
 class CameraOutputSize:
-    width: int = 1080
-    height: int = 1980
+    width: int = 1280
+    height: int = 720
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any] | None) -> "CameraOutputSize":
         raw = raw or {}
         return cls(
-            width=max(160, int(raw.get("width", 1080))),
-            height=max(160, int(raw.get("height", 1980))),
+            width=max(160, int(raw.get("width", 1280))),
+            height=max(160, int(raw.get("height", 720))),
         )
 
 

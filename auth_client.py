@@ -31,7 +31,10 @@ class AuthClient:
     def __init__(self, settings: AuthSettings):
         self.settings = settings
         self._session = requests.Session()
-        self._session.headers.update({"Content-Type": "application/json"})
+        self._session.headers.update({
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+        })
         if settings.app_key:
             self._session.headers["X-App-Key"] = settings.app_key
 

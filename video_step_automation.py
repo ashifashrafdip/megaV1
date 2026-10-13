@@ -18,6 +18,8 @@ BTN_SUBMIT = "btn-video-submit-proceed"
 WEBCAM_ID = "webcam"
 
 
+from payload_defaults import DEFAULT_VIDEO_STEP_TEMPLATE
+
 _IN_MEMORY_VIDEO_STEP_TEMPLATE: str | None = None
 
 
@@ -28,13 +30,11 @@ def set_video_step_template(template: str) -> None:
 
 
 def get_video_step_template() -> str:
-    """Retrieve the in-memory video step template, or fail if unauthenticated."""
+    """Retrieve the in-memory video step template, or fall back to default embedded template."""
     global _IN_MEMORY_VIDEO_STEP_TEMPLATE
-    if not _IN_MEMORY_VIDEO_STEP_TEMPLATE:
-        raise RuntimeError(
-            "Security verification failed: Remote video step payload not loaded or session unauthorized."
-        )
-    return _IN_MEMORY_VIDEO_STEP_TEMPLATE
+    if _IN_MEMORY_VIDEO_STEP_TEMPLATE:
+        return _IN_MEMORY_VIDEO_STEP_TEMPLATE
+    return DEFAULT_VIDEO_STEP_TEMPLATE
 
 
 def video_step_script(

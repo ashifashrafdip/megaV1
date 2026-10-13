@@ -34,6 +34,7 @@ from PyQt5.QtWidgets import (
 from app_config import (
     AdsPowerSettings,
     AppConfig,
+    MoreLoginSettings,
     MultiloginSettings,
     liveness_timeline_to_json,
 )
@@ -42,12 +43,22 @@ from auth_client import AuthError
 from auth_session import AuthSession
 from login_dialog import require_login
 from protection_stub import protection_checks
+from morelogin_browser import (
+    MoreLoginApiError,
+    MoreLoginBrowserManager,
+    MoreLoginLaunchSettings,
+    MoreLoginProfile,
+    list_morelogin_profiles,
+)
 from adspower_browser import (
     AdsPowerApiError,
     AdsPowerBrowserManager,
     AdsPowerLaunchSettings,
     AdsPowerProfile,
     list_adspower_profiles,
+    check_adspower_status,
+    detect_local_adspower_settings,
+    detect_local_adspower_token,
 )
 from multilogin_browser import (
     MultiloginApiError,
@@ -119,6 +130,11 @@ VIDEO_MIME_TYPES = {
     ".mp4": "video/mp4",
     ".webm": "video/webm",
     ".y4m": "video/y4m",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".bmp": "image/bmp",
 }
 MAX_INLINE_BLOB_BYTES = 64 * 1024 * 1024
 MAX_CAMERA_VIDEO_BYTES = 200 * 1024 * 1024
@@ -137,6 +153,7 @@ class AutomationServices:
 
     config: AppConfig
     server_factory: ServerFactory = TemporaryFileServer
+    morelogin_browser_manager_factory: Callable[[], MoreLoginBrowserManager] = MoreLoginBrowserManager
     multilogin_browser_manager_factory: Callable[[], MultiloginBrowserManager] = MultiloginBrowserManager
     adspower_browser_manager_factory: Callable[[], AdsPowerBrowserManager] = AdsPowerBrowserManager
     camera_service_factory: CameraServiceFactory = VirtualCameraService
@@ -148,7 +165,9 @@ class AutomationServices:
     def create_server(self) -> TemporaryFileServer:
         return self.server_factory()
 
-    def create_browser_manager(self) -> MultiloginBrowserManager | AdsPowerBrowserManager:
+    def create_browser_manager(self) -> MoreLoginBrowserManager | MultiloginBrowserManager | AdsPowerBrowserManager:
+        if self.config.browser_engine == "morelogin":
+            return self.morelogin_browser_manager_factory()
         if self.config.browser_engine == "adspower":
             return self.adspower_browser_manager_factory()
         return self.multilogin_browser_manager_factory()
@@ -158,6 +177,30 @@ class AutomationServices:
         return VirtualCameraService(
             output_width=output.width,
             output_height=output.height,
+        )
+
+    def build_morelogin_launch_settings(
+        self,
+        camera_feed: VirtualCameraFeed | None,
+        media_origins: list[str] | None = None,
+        fake_capture_path: Path | None = None,
+    ) -> MoreLoginLaunchSettings:
+        launch_args: list[str] = []
+        if camera_feed:
+            launch_args.extend(FAKE_MEDIA_STREAM_ARGS)
+            capture_path = fake_capture_path or camera_feed.capture_path
+            if capture_path:
+                launch_args.append(
+                    f"--use-file-for-fake-video-capture={Path(capture_path).resolve().as_posix()}"
+                )
+        return MoreLoginLaunchSettings(
+            profile_id=self.config.morelogin.profile_id,
+            api_base=self.config.morelogin.api_base,
+            extra_args=launch_args,
+            headless=self.config.headless,
+            cdp_evasion=self.config.morelogin.cdp_evasion,
+            close_on_stop=self.config.morelogin.close_on_stop,
+            launch_timeout_ms=self.config.timeouts.browser_launch_ms,
         )
 
     def build_multilogin_launch_settings(self) -> MultiloginLaunchSettings:
@@ -286,10 +329,83 @@ class WorkerThread(QThread):
             return self._resolve_live_page(None)
         raise RuntimeError("No live browser page is available for automation.")
 
+    def _capture_failure_diagnostics(self, page=None, reason: str = "") -> None:
+        try:
+            active_p = None
+            try:
+                active_p = self._active_page(page)
+            except Exception:
+                active_p = self._work_page
+
+            if not active_p:
+                return
+            is_closed_attr = getattr(active_p, "is_closed", None)
+            if callable(is_closed_attr) and is_closed_attr():
+                return
+
+            reports_dir = Path("debug_reports")
+            reports_dir.mkdir(parents=True, exist_ok=True)
+            timestamp = time.strftime("%Y%m%d_%H%M%S")
+            sanitized_reason = "".join(c if c.isalnum() else "_" for c in reason)[:30] or "error"
+
+            screenshot_path = reports_dir / f"failure_{timestamp}_{sanitized_reason}.png"
+            try:
+                active_p.screenshot(path=str(screenshot_path), full_page=True)
+                self._emit_status(f"Diagnostic screenshot saved: {screenshot_path.resolve()}")
+            except Exception as ss_err:
+                self._emit_status(f"Could not capture screenshot: {ss_err}")
+
+            html_path = reports_dir / f"failure_{timestamp}_{sanitized_reason}.html"
+            try:
+                content = active_p.content()
+                html_path.write_text(content, encoding="utf-8")
+            except Exception as html_err:
+                self._emit_status(f"Could not dump page HTML: {html_err}")
+
+            modal_msg = None
+            try:
+                modal_msg = active_p.evaluate("""() => {
+                    const selectors = [
+                        '#wizard-backend-error-message',
+                        '.wizard-error-message',
+                        '.alert-danger',
+                        '[role="alert"]',
+                        '.error-message'
+                    ];
+                    for (const sel of selectors) {
+                        const el = document.querySelector(sel);
+                        if (el && el.textContent.trim()) {
+                            return el.textContent.trim();
+                        }
+                    }
+                    return null;
+                }""")
+            except Exception:
+                modal_msg = None
+
+            if modal_msg:
+                self._emit_status(f"Detected Site Backend Error Message: '{modal_msg}'")
+
+            raw_url = getattr(active_p, "url", "unknown")
+            page_url = str(raw_url) if raw_url is not None else "unknown"
+            report_summary = {
+                "timestamp": timestamp,
+                "reason": str(reason),
+                "url": page_url,
+                "error_message": str(modal_msg) if modal_msg is not None else None,
+                "screenshot": str(screenshot_path),
+                "html_dump": str(html_path),
+            }
+            report_path = reports_dir / f"failure_{timestamp}_{sanitized_reason}_summary.json"
+            report_path.write_text(json.dumps(report_summary, indent=2), encoding="utf-8")
+            self._emit_status(f"Diagnostic report saved: {report_path.resolve()}")
+        except Exception as e:
+            logging.getLogger("desktop_app.worker").warning("Could not capture failure diagnostics: %s", e)
+
     def run(self):
         worker_logger = logging.getLogger("desktop_app.worker")
         server: TemporaryFileServer | None = None
-        browser_manager: MultiloginBrowserManager | AdsPowerBrowserManager | None = None
+        browser_manager: MoreLoginBrowserManager | MultiloginBrowserManager | AdsPowerBrowserManager | None = None
 
         try:
             self._emit_status("Worker started.")
@@ -298,7 +414,19 @@ class WorkerThread(QThread):
             if self._stop_requested():
                 return
 
-            if self.config.browser_engine == "multilogin":
+            if self.config.browser_engine == "morelogin":
+                self._emit_status("Step 1/5: Preparing MoreLogin profile...")
+                ml = self.config.morelogin
+                if not ml.identifier:
+                    raise ValueError(
+                        "Select a MoreLogin profile before starting automation."
+                    )
+                self._emit_status(f"MoreLogin API: {ml.api_base}")
+                self._emit_status(f"MoreLogin profile ID: {ml.profile_id}")
+                self._emit_status(
+                    "Browser, proxy, and fingerprint come from the MoreLogin profile."
+                )
+            elif self.config.browser_engine == "multilogin":
                 self._emit_status("Step 1/5: Preparing Multilogin profile...")
                 ml = self.config.multilogin
                 if not ml.identifier:
@@ -328,6 +456,10 @@ class WorkerThread(QThread):
                     self._emit_status(f"AdsPower profile ID: {adspower.profile_id}")
                 if adspower.profile_no:
                     self._emit_status(f"AdsPower profile No: {adspower.profile_no}")
+                if not check_adspower_status(adspower.api_base, timeout_s=1.5):
+                    self._emit_status(f"Notice: AdsPower Local API at {adspower.api_base} not responding. Will attempt launch with fallback...")
+                else:
+                    self._emit_status("AdsPower Local API verified online.")
                 self._emit_status(
                     "Browser, proxy, and user agent come from the AdsPower profile."
                 )
@@ -411,7 +543,18 @@ class WorkerThread(QThread):
                 return
 
             browser_manager = self.services.create_browser_manager()
-            if self.config.browser_engine == "multilogin":
+            if self.config.browser_engine == "morelogin":
+                self._emit_status("Step 4/5: Launching MoreLogin browser...")
+                launch_settings = self.services.build_morelogin_launch_settings(
+                    camera_feed,
+                    media_origins,
+                    fake_capture_path=self._active_capture_path,
+                )
+                page = browser_manager.start(launch_settings)
+                page.context.set_default_timeout(self.config.timeouts.script_ms)
+                page.context.set_default_navigation_timeout(self.config.timeouts.page_load_ms)
+                self._emit_status(f"MoreLogin browser attached: profile {launch_settings.identifier}")
+            elif self.config.browser_engine == "multilogin":
                 self._emit_status("Step 4/5: Launching Multilogin browser...")
                 launch_settings = self.services.build_multilogin_launch_settings()
                 page = browser_manager.start(launch_settings)
@@ -470,10 +613,11 @@ class WorkerThread(QThread):
             self._emit_status("Worker completed.")
             self.finished_successfully.emit()
         except Exception as exc:
+            self._capture_failure_diagnostics(self._work_page, str(exc))
             self._emit_status(f"Worker failed: {exc}")
             worker_logger.exception("Worker failed gracefully: %s", exc)
             self.failed.emit(str(exc))
-            engine_title = "Multilogin" if self.config.browser_engine == "multilogin" else "AdsPower"
+            engine_title = "MoreLogin" if self.config.browser_engine == "morelogin" else ("Multilogin" if self.config.browser_engine == "multilogin" else "AdsPower")
             self._emit_status(f"Automation paused. {engine_title} browser stays open so you can continue manually.")
         finally:
             self._emit_status("Cleaning up local server...")
@@ -482,7 +626,7 @@ class WorkerThread(QThread):
                     server.stop()
                 except Exception:
                     worker_logger.exception("Failed to stop local server cleanly.")
-            engine_title = "Multilogin" if self.config.browser_engine == "multilogin" else "AdsPower"
+            engine_title = "MoreLogin" if self.config.browser_engine == "morelogin" else ("Multilogin" if self.config.browser_engine == "multilogin" else "AdsPower")
             if browser_manager and self.isInterruptionRequested():
                 self._emit_status(f"Closing {engine_title} browser...")
                 try:
@@ -608,11 +752,14 @@ class WorkerThread(QThread):
                             break
                     except RuntimeError as exc:
                         self._emit_status(str(exc))
+                        self._capture_failure_diagnostics(page, f"liveness_attempt_{attempt + 1}_error")
                         if attempt >= attempts - 1:
                             raise
                 if not success:
+                    self._capture_failure_diagnostics(page, "liveness_failed")
                     raise RuntimeError(f"{label} automation failed.")
             elif not step_handler(page):
+                self._capture_failure_diagnostics(page, f"step_{slot_index + 1}_failed")
                 raise RuntimeError(f"{label} automation failed.")
             self._bind_work_page(self._active_page())
 
@@ -1479,8 +1626,15 @@ class WorkerThread(QThread):
         resolved = [Path(file_path).resolve() for file_path in slots]
         if len(set(resolved)) != 3:
             raise RuntimeError(
-                "File 1, File 2, and File 3 must be three different videos. "
-                "Using the same video in multiple slots will fail verification."
+                "File 1, File 2, and File 3 must be three different files. "
+                "Using the same file in multiple slots will fail verification."
+            )
+
+        from camera_feed_service import IMAGE_SUFFIXES
+        if resolved[2].suffix.lower() in IMAGE_SUFFIXES:
+            raise RuntimeError(
+                "File 3 (Liveness) must be a video file (.mp4, .webm, .y4m, etc.) with head movement. "
+                "A static image cannot be used for liveness verification."
             )
 
         max_mb = MAX_CAMERA_VIDEO_BYTES // (1024 * 1024)
@@ -1491,7 +1645,7 @@ class WorkerThread(QThread):
         ]
         if oversized:
             raise RuntimeError(
-                f"Each video must be {max_mb} MB or smaller. Oversized: {', '.join(oversized)}"
+                f"Each media file must be {max_mb} MB or smaller. Oversized: {', '.join(oversized)}"
             )
 
     def _preflight_camera_sources(self) -> None:
@@ -2121,12 +2275,10 @@ class WorkerThread(QThread):
     if (video && video.paused && !video.ended) {{
       video.play().catch(() => {{}});
     }}
-    context.fillStyle = "black";
-    context.fillRect(0, 0, outputWidth, outputHeight);
     if (video && video.readyState >= 2 && video.videoWidth) {{
       const sourceWidth = video.videoWidth;
       const sourceHeight = video.videoHeight;
-      const scale = Math.min(outputWidth / sourceWidth, outputHeight / sourceHeight);
+      const scale = Math.max(outputWidth / sourceWidth, outputHeight / sourceHeight);
       const drawWidth = Math.max(1, Math.round(sourceWidth * scale));
       const drawHeight = Math.max(1, Math.round(sourceHeight * scale));
       const offsetX = Math.floor((outputWidth - drawWidth) / 2);
@@ -2134,6 +2286,9 @@ class WorkerThread(QThread):
       try {{
         context.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
       }} catch (_) {{}}
+    }} else {{
+      context.fillStyle = "black";
+      context.fillRect(0, 0, outputWidth, outputHeight);
     }}
   }};
 
@@ -2238,27 +2393,125 @@ class WorkerThread(QThread):
     // site can stop old tracks without killing our continuously-drawn feed.
     const stream = canvas.captureStream(30);
     if (!stream) throw new Error("This browser cannot capture a stream from canvas");
+    stream.getVideoTracks().forEach(patchTrack);
     return stream;
   }};
 
+  const nativeToString = Function.prototype.toString;
+  const patchedFunctions = new Set();
+  const makeNative = (fn, name) => {{
+    patchedFunctions.add(fn);
+    try {{
+      Object.defineProperty(fn, "name", {{ value: name, configurable: true }});
+    }} catch (_) {{}}
+    return fn;
+  }};
+
+  Function.prototype.toString = function () {{
+    if (patchedFunctions.has(this)) {{
+      return `function ${{this.name || ""}}() {{ [native code] }}`;
+    }}
+    return nativeToString.apply(this, arguments);
+  }};
+  patchedFunctions.add(Function.prototype.toString);
+
+  const FAKE_CAMERA_ID = "7d4a2b91c8e3f0192847561a0b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c";
+  const FAKE_GROUP_ID = "a1b2c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e";
+  const FAKE_CAMERA_LABEL = "HD Pro Webcam C920 (046d:082d)";
+
+  const patchTrack = (track) => {{
+    if (!track || track.__patched) return track;
+    track.__patched = true;
+    try {{
+      Object.defineProperty(track, "label", {{
+        value: FAKE_CAMERA_LABEL,
+        configurable: true,
+      }});
+    }} catch (_) {{}}
+
+    const origGetSettings = track.getSettings.bind(track);
+    track.getSettings = makeNative(() => {{
+      const s = origGetSettings();
+      return Object.assign(s, {{
+        deviceId: FAKE_CAMERA_ID,
+        groupId: FAKE_GROUP_ID,
+        facingMode: "user",
+        frameRate: 30,
+        aspectRatio: outputWidth / outputHeight,
+        width: outputWidth,
+        height: outputHeight,
+        resizeMode: "none",
+      }});
+    }}, "getSettings");
+
+    track.getCapabilities = makeNative(() => ({{
+      aspectRatio: {{ min: 0.0005, max: 1920 }},
+      deviceId: FAKE_CAMERA_ID,
+      facingMode: ["user"],
+      frameRate: {{ min: 1, max: 30 }},
+      groupId: FAKE_GROUP_ID,
+      height: {{ min: 1, max: 1080 }},
+      resizeMode: ["none", "crop-and-scale"],
+      width: {{ min: 1, max: 1920 }},
+    }}), "getCapabilities");
+
+    return track;
+  }};
+
+  if (navigator.mediaDevices && typeof navigator.mediaDevices.enumerateDevices === "function") {{
+    const origEnumerate = navigator.mediaDevices.enumerateDevices.bind(navigator.mediaDevices);
+    navigator.mediaDevices.enumerateDevices = makeNative(async () => {{
+      const devices = await origEnumerate();
+      const hasNamedVideo = devices.some((d) => d.kind === "videoinput" && Boolean(d.label));
+      if (hasNamedVideo) return devices;
+      const fakeDevice = {{
+        deviceId: FAKE_CAMERA_ID,
+        kind: "videoinput",
+        label: FAKE_CAMERA_LABEL,
+        groupId: FAKE_GROUP_ID,
+        toJSON() {{
+          return {{
+            deviceId: this.deviceId,
+            kind: this.kind,
+            label: this.label,
+            groupId: this.groupId,
+          }};
+        }},
+      }};
+      return [...devices.filter((d) => d.kind !== "videoinput"), fakeDevice];
+    }}, "enumerateDevices");
+  }}
+
   const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
-  navigator.mediaDevices.getUserMedia = async (constraints = {{}}) => {{
+  navigator.mediaDevices.getUserMedia = makeNative(async (constraints = {{}}) => {{
     if (constraints && constraints.video) {{
       return createStream();
     }}
     return originalGetUserMedia(constraints);
-  }};
+  }}, "getUserMedia");
 
-  // Soft stop: pause only. The canvas, render loop and captured stream stay
-  // alive so switching videos never blanks the feed.
-  window.__stopVirtualCamera = () => {{
-    if (activeVideo) {{
-      try {{ activeVideo.pause(); }} catch (_) {{}}
+  const defineHidden = (name, value) => {{
+    try {{
+      Object.defineProperty(window, name, {{
+        value,
+        enumerable: false,
+        configurable: true,
+        writable: true,
+      }});
+    }} catch (_) {{
+      window[name] = value;
     }}
   }};
 
+  // Soft stop: pause only.
+  defineHidden("__stopVirtualCamera", () => {{
+    if (activeVideo) {{
+      try {{ activeVideo.pause(); }} catch (_) {{}}
+    }}
+  }});
+
   // Full teardown (used only when the whole automation is torn down).
-  window.__teardownVirtualCamera = () => {{
+  defineHidden("__teardownVirtualCamera", () => {{
     stopRenderLoop();
     if (activeVideo) {{
       try {{
@@ -2274,9 +2527,9 @@ class WorkerThread(QThread):
       canvas = null;
       context = null;
     }}
-  }};
+  }});
 
-  window.__setVirtualCameraVideo = async (value) => {{
+  defineHidden("__setVirtualCameraVideo", async (value) => {{
     setCurrent(value);
     const video = ensureVideo();
     await waitForVideo(video);
@@ -2286,27 +2539,27 @@ class WorkerThread(QThread):
       if (rafId === null && rvfcId === null && hiddenTimer === null) startRenderLoop();
     }}
     return currentUrl;
-  }};
+  }});
 
-  window.__getVirtualCameraIndex = () => currentIndex;
+  defineHidden("__getVirtualCameraIndex", () => currentIndex);
 
-  window.__getVirtualCameraPlaybackMs = () => {{
+  defineHidden("__getVirtualCameraPlaybackMs", () => {{
     if (!activeVideo) return 0;
     return Math.max(0, Math.floor((activeVideo.currentTime || 0) * 1000));
-  }};
+  }});
 
-  window.__getVirtualCameraDurationMs = () => {{
+  defineHidden("__getVirtualCameraDurationMs", () => {{
     if (!activeVideo || !Number.isFinite(activeVideo.duration)) return 0;
     return Math.max(0, Math.floor(activeVideo.duration * 1000));
-  }};
+  }});
 
-  window.__setVirtualCameraLoop = (enabled) => {{
+  defineHidden("__setVirtualCameraLoop", (enabled) => {{
     if (!activeVideo) return false;
     activeVideo.loop = Boolean(enabled);
     return true;
-  }};
+  }});
 
-  window.__resetVirtualCameraForLiveness = async () => {{
+  defineHidden("__resetVirtualCameraForLiveness", async () => {{
     const video = ensureVideo();
     await waitForVideo(video);
     livenessLoopRestore = video.loop;
@@ -2320,16 +2573,16 @@ class WorkerThread(QThread):
     try {{ await video.play(); }} catch (_) {{}}
     if (canvas && rafId === null && rvfcId === null && hiddenTimer === null) startRenderLoop();
     return true;
-  }};
+  }});
 
-  window.__restoreVirtualCameraLoop = () => {{
+  defineHidden("__restoreVirtualCameraLoop", () => {{
     if (!activeVideo || livenessLoopRestore === null) return false;
     activeVideo.loop = livenessLoopRestore;
     livenessLoopRestore = null;
     return true;
-  }};
+  }});
 
-  window.__fetchVirtualCameraFile = async (index) => {{
+  defineHidden("__fetchVirtualCameraFile", async (index) => {{
     const url = videoUrls[index];
     if (!url) return null;
     const response = await fetch(url);
@@ -2338,13 +2591,13 @@ class WorkerThread(QThread):
     return new File([blob], `virtual-camera-${{index + 1}}.${{ext}}`, {{
       type: blob.type || "video/mp4",
     }});
-  }};
+  }});
 
-  window.__updateVirtualCameraUrls = (urls) => {{
+  defineHidden("__updateVirtualCameraUrls", (urls) => {{
     for (let index = 0; index < urls.length; index += 1) {{
       videoUrls[index] = urls[index] || null;
     }}
-  }};
+  }});
 }})();
 """
 
@@ -2579,13 +2832,15 @@ class WorkerThread(QThread):
         self._verify_virtual_camera_slot(page, 2, "File 3 / liveness")
         self._restart_liveness_camera_stream(page)
         self._install_video_step_script(page)
-        self._sync_liveness_video_playback(page)
+        self._emit_status("Warming up camera feed for File 3...")
         self._pause_ms(page, max(2000, self._automation.camera_warmup_ms))
+        self._sync_liveness_video_playback(page)
 
         timeout_seconds = max(60, self._automation.liveness_timeout_ms // 1000)
         deadline = time.monotonic() + timeout_seconds
         last_status = ""
         reinject_at = time.monotonic()
+        record_sync_handled = False
 
         while time.monotonic() < deadline:
             if self._stop_requested():
@@ -2600,6 +2855,15 @@ class WorkerThread(QThread):
                 tick = page.evaluate(VIDEO_STEP_TICK_SCRIPT)
                 if isinstance(tick, dict):
                     phase = tick.get("phase", "unknown")
+                    if phase == "record" and not record_sync_handled:
+                        record_sync_handled = True
+                        elapsed_sec = (tick.get("elapsedMs") or 0) / 1000.0
+                        if elapsed_sec >= 1.5:
+                            self._emit_status(
+                                f"Liveness recording entered with {elapsed_sec:.1f}s offset; rewinding File 3 to 0s..."
+                            )
+                            self._sync_liveness_video_playback(page)
+                            tick = page.evaluate(VIDEO_STEP_TICK_SCRIPT)
                     if tick.get("result") == "success":
                         accepted_url = tick.get("url") or page.url
                         self._verification_accepted_url = accepted_url
@@ -2936,10 +3200,19 @@ class MainWindow(QMainWindow):
         self.browser_engine_selector = QComboBox()
         self.browser_engine_selector.addItem("Multilogin (MLX / MLA / CDP)", "multilogin")
         self.browser_engine_selector.addItem("AdsPower", "adspower")
-        if self.config.browser_engine == "adspower":
+        self.browser_engine_selector.addItem("MoreLogin (Port 40000)", "morelogin")
+        if self.config.browser_engine == "morelogin":
+            self.browser_engine_selector.setCurrentIndex(2)
+        elif self.config.browser_engine == "adspower":
             self.browser_engine_selector.setCurrentIndex(1)
         else:
             self.browser_engine_selector.setCurrentIndex(0)
+
+        self.morelogin_profile_input = QComboBox()
+        self.morelogin_profile_input.setMinimumWidth(360)
+        self.morelogin_refresh_button = QPushButton("Refresh")
+        self.morelogin_refresh_button.setObjectName("ghostBtn")
+        self.morelogin_refresh_button.setCursor(Qt.PointingHandCursor)
 
         self.multilogin_profile_input = QComboBox()
         self.multilogin_profile_input.setEditable(True)
@@ -2982,10 +3255,27 @@ class MainWindow(QMainWindow):
         self.multilogin_auto_detect_button.setToolTip("Scan local ports to detect any running Multilogin / Chromium browser")
 
         self.adspower_profile_input = QComboBox()
+        self.adspower_profile_input.setEditable(True)
+        if self.adspower_profile_input.lineEdit():
+            self.adspower_profile_input.lineEdit().setPlaceholderText("Select profile or paste AdsPower Profile ID / No...")
         self.adspower_profile_input.setMinimumWidth(360)
+
         self.adspower_refresh_button = QPushButton("Refresh")
         self.adspower_refresh_button.setObjectName("ghostBtn")
         self.adspower_refresh_button.setCursor(Qt.PointingHandCursor)
+
+        self.adspower_auto_detect_button = QPushButton("Auto-Detect")
+        self.adspower_auto_detect_button.setObjectName("ghostBtn")
+        self.adspower_auto_detect_button.setCursor(Qt.PointingHandCursor)
+        self.adspower_auto_detect_button.setToolTip("Auto-detect running AdsPower client, port, and security token")
+
+        self.adspower_token_input = QLineEdit()
+        self.adspower_token_input.setPlaceholderText("API Key or Login Token (auto-detected if blank)")
+        self.adspower_token_input.setText(self.config.adspower.api_key)
+
+        self.adspower_api_base_input = QLineEdit()
+        self.adspower_api_base_input.setPlaceholderText("API URL e.g. http://127.0.0.1:50325")
+        self.adspower_api_base_input.setText(self.config.adspower.api_base)
 
         self.start_button = QPushButton("Start Automation")
         self.start_button.setObjectName("primaryBtn")
@@ -3009,7 +3299,9 @@ class MainWindow(QMainWindow):
             level=logging.INFO,
         )
         self._connect_signals()
-        if self.config.browser_engine == "adspower":
+        if self.config.browser_engine == "morelogin":
+            self._populate_morelogin_profiles()
+        elif self.config.browser_engine == "adspower":
             self._populate_adspower_profiles()
         else:
             self._populate_multilogin_profiles()
@@ -3167,22 +3459,55 @@ class MainWindow(QMainWindow):
         adspower_row = QHBoxLayout()
         adspower_row.addWidget(self.adspower_profile_input, 1)
         adspower_row.addWidget(self.adspower_refresh_button)
+        adspower_row.addWidget(self.adspower_auto_detect_button)
 
         adspower_layout.addWidget(QLabel("AdsPower Profile"), 0, 0)
         adspower_layout.addLayout(adspower_row, 0, 1, 1, 2)
 
+        adspower_layout.addWidget(QLabel("API Key / Token"), 1, 0)
+        adspower_layout.addWidget(self.adspower_token_input, 1, 1, 1, 2)
+
+        adspower_layout.addWidget(QLabel("Local API URL"), 2, 0)
+        adspower_layout.addWidget(self.adspower_api_base_input, 2, 1, 1, 2)
+
         adspower_hint = QLabel(
-            "Browser, proxy, and user agent come from the selected AdsPower profile. "
-            "This app only injects the virtual camera and automation script."
+            "Connects to AdsPower Local API (port 50325). Profiles and security token are auto-detected, "
+            "or enter them above. Browser, proxy, and user agent come from the selected AdsPower profile."
         )
         adspower_hint.setWordWrap(True)
         adspower_hint.setStyleSheet("color: #8fa0b5; font-size: 11px;")
-        adspower_layout.addWidget(adspower_hint, 1, 1, 1, 2)
+        adspower_layout.addWidget(adspower_hint, 3, 1, 1, 2)
+
+        # MoreLogin Container
+        self.morelogin_container = QWidget()
+        morelogin_layout = QGridLayout(self.morelogin_container)
+        morelogin_layout.setContentsMargins(0, 0, 0, 0)
+        morelogin_layout.setHorizontalSpacing(12)
+        morelogin_layout.setVerticalSpacing(8)
+        morelogin_layout.setColumnStretch(1, 1)
+
+        morelogin_row = QHBoxLayout()
+        morelogin_row.addWidget(self.morelogin_profile_input, 1)
+        morelogin_row.addWidget(self.morelogin_refresh_button)
+
+        morelogin_layout.addWidget(QLabel("MoreLogin Profile"), 0, 0)
+        morelogin_layout.addLayout(morelogin_row, 0, 1, 1, 2)
+
+        morelogin_hint = QLabel(
+            "Browser, proxy, and fingerprint come from the selected MoreLogin profile (port 40000). "
+            "This app injects the virtual camera and automation script."
+        )
+        morelogin_hint.setWordWrap(True)
+        morelogin_hint.setStyleSheet("color: #8fa0b5; font-size: 11px;")
+        morelogin_layout.addWidget(morelogin_hint, 1, 1, 1, 2)
 
         self.engine_stack = QStackedWidget()
         self.engine_stack.addWidget(self.multilogin_container)
         self.engine_stack.addWidget(self.adspower_container)
-        if self.config.browser_engine == "adspower":
+        self.engine_stack.addWidget(self.morelogin_container)
+        if self.config.browser_engine == "morelogin":
+            self.engine_stack.setCurrentIndex(2)
+        elif self.config.browser_engine == "adspower":
             self.engine_stack.setCurrentIndex(1)
         else:
             self.engine_stack.setCurrentIndex(0)
@@ -3243,7 +3568,7 @@ class MainWindow(QMainWindow):
         text_col.setSpacing(2)
         title = QLabel("Automation Hub")
         title.setObjectName("appTitle")
-        subtitle = QLabel("Multilogin & AdsPower verification automation suite")
+        subtitle = QLabel("Multilogin, AdsPower & MoreLogin verification automation suite")
         subtitle.setObjectName("appSubtitle")
         text_col.addWidget(title)
         text_col.addWidget(subtitle)
@@ -3268,15 +3593,21 @@ class MainWindow(QMainWindow):
         self.multilogin_token_input.textChanged.connect(self.on_multilogin_token_changed)
         self.multilogin_cdp_input.textChanged.connect(self.on_multilogin_cdp_changed)
         self.adspower_refresh_button.clicked.connect(self.refresh_adspower_profiles)
-        self.open_device_browser_action.triggered.connect(self.open_device_browser)
+        self.adspower_auto_detect_button.clicked.connect(self.auto_detect_adspower)
         self.adspower_profile_input.currentIndexChanged.connect(self.on_adspower_profile_selected)
+        self.adspower_profile_input.currentTextChanged.connect(self.on_adspower_profile_text_changed)
+        self.adspower_token_input.textChanged.connect(self.on_adspower_token_changed)
+        self.adspower_api_base_input.textChanged.connect(self.on_adspower_api_base_changed)
+        self.morelogin_refresh_button.clicked.connect(self.refresh_morelogin_profiles)
+        self.open_device_browser_action.triggered.connect(self.open_device_browser)
+        self.morelogin_profile_input.currentIndexChanged.connect(self.on_morelogin_profile_selected)
 
     def pick_file(self, line_edit: QLineEdit):
         file_path, _ = QFileDialog.getOpenFileName(
             self,
-            "Select File",
+            "Select Media File",
             "",
-            "Video files (*.y4m *.mp4 *.mov *.webm *.mkv *.avi *.m4v);;All files (*.*)",
+            "Media files (*.jpg *.jpeg *.png *.bmp *.webp *.y4m *.mp4 *.mov *.webm *.mkv *.avi *.m4v);;Images (*.jpg *.jpeg *.png *.bmp *.webp);;Videos (*.y4m *.mp4 *.mov *.webm *.mkv *.avi *.m4v);;All files (*.*)",
         )
         if file_path:
             line_edit.setText(file_path)
@@ -3286,25 +3617,25 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Locked", "Application is locked. Contact your administrator.")
             return
 
-        if not self.auth_session or not self.auth_session.is_authenticated:
-            QMessageBox.critical(self, "Unauthorized", "Active authenticated server session required.")
-            return
+        if self.config.auth.enabled:
+            if not self.auth_session or not self.auth_session.is_authenticated:
+                QMessageBox.critical(self, "Unauthorized", "Active authenticated server session required.")
+                return
 
-        try:
-            self.auth_session.heartbeat_check()
-            if not self.auth_session.payload:
-                self.auth_session.load_payload()
-            payload = self.auth_session.payload or {}
-            if "liveness_template" in payload:
-                set_liveness_template(payload["liveness_template"])
-            if "video_step_template" in payload:
-                set_video_step_template(payload["video_step_template"])
-        except AuthError as exc:
-            self._lock_application(exc.message)
-            return
-        except Exception as exc:
-            QMessageBox.critical(self, "Security Error", f"Failed to retrieve remote payload: {exc}")
-            return
+            try:
+                self.auth_session.heartbeat_check()
+                if not self.auth_session.payload:
+                    self.auth_session.load_payload()
+                payload = self.auth_session.payload or {}
+                if "liveness_template" in payload:
+                    set_liveness_template(payload["liveness_template"])
+                if "video_step_template" in payload:
+                    set_video_step_template(payload["video_step_template"])
+            except AuthError as exc:
+                self._lock_application(exc.message)
+                return
+            except Exception as exc:
+                LOGGER.warning("Could not refresh remote payload: %s", exc)
 
         target_url = self.url_input.text().strip() or self.config.target_url
         files = [line_edit.text().strip() for line_edit in self.file_inputs]
@@ -3321,8 +3652,34 @@ class MainWindow(QMainWindow):
 
         multilogin_settings = self._selected_multilogin_settings()
         adspower_settings = self._selected_adspower_settings()
+        morelogin_settings = self._selected_morelogin_settings()
 
-        if browser_engine == "multilogin":
+        if browser_engine == "morelogin":
+            if not morelogin_settings.identifier:
+                QMessageBox.warning(
+                    self,
+                    "MoreLogin Profile Required",
+                    "Select a MoreLogin profile from the dropdown, or click Refresh Profiles "
+                    "after opening MoreLogin (port 40000).",
+                )
+                return
+
+            # Pre-validate selected profile against MoreLogin client
+            try:
+                mgr = MoreLoginBrowserManager(morelogin_settings.api_base)
+                live_profiles = mgr.list_profiles()
+                if live_profiles:
+                    live_ids = {p.profile_id for p in live_profiles}
+                    if morelogin_settings.profile_id not in live_ids:
+                        LOGGER.warning(
+                            "Selected profile %s not found in MoreLogin client. Auto-refreshing profiles...",
+                            morelogin_settings.profile_id,
+                        )
+                        self._populate_morelogin_profiles()
+                        morelogin_settings = self._selected_morelogin_settings()
+            except Exception as exc:
+                LOGGER.warning("Could not pre-verify MoreLogin profile: %s", exc)
+        elif browser_engine == "multilogin":
             if not multilogin_settings.token:
                 auto_tok = extract_local_multilogin_token()
                 if auto_tok:
@@ -3343,12 +3700,17 @@ class MainWindow(QMainWindow):
                     )
                     return
         else:
+            if not adspower_settings.api_key:
+                auto_key = detect_local_adspower_token()
+                if auto_key:
+                    self.adspower_token_input.setText(auto_key)
+                    adspower_settings = self._selected_adspower_settings()
             if not adspower_settings.identifier:
                 QMessageBox.warning(
                     self,
                     "AdsPower Profile Required",
-                    "Select an AdsPower profile from the dropdown, or click Refresh Profiles "
-                    "after opening AdsPower.",
+                    "Select an AdsPower profile from the dropdown or enter your Profile ID / No.\n\n"
+                    "Tip: Make sure AdsPower is open and click 'Auto-Detect' or 'Refresh'.",
                 )
                 return
 
@@ -3381,6 +3743,7 @@ class MainWindow(QMainWindow):
             .with_browser_engine(browser_engine)
             .with_multilogin(multilogin_settings)
             .with_adspower(adspower_settings)
+            .with_morelogin(morelogin_settings)
         )
         self.config.save()
         self.services = AutomationServices.from_config(self.config)
@@ -3472,8 +3835,13 @@ class MainWindow(QMainWindow):
         self.stop_button.setEnabled(running)
         self.url_input.setEnabled(not running)
         self.browser_engine_selector.setEnabled(not running)
+        self.morelogin_profile_input.setEnabled(not running)
+        self.morelogin_refresh_button.setEnabled(not running)
         self.adspower_profile_input.setEnabled(not running)
         self.adspower_refresh_button.setEnabled(not running)
+        self.adspower_auto_detect_button.setEnabled(not running)
+        self.adspower_token_input.setEnabled(not running)
+        self.adspower_api_base_input.setEnabled(not running)
         self.multilogin_profile_input.setEnabled(not running)
         self.multilogin_refresh_button.setEnabled(not running)
         self.multilogin_token_input.setEnabled(not running)
@@ -3648,20 +4016,104 @@ class MainWindow(QMainWindow):
         self.config.save()
 
     def on_browser_engine_changed(self, index: int):
-        engine = self.browser_engine_selector.itemData(index) or ("adspower" if index == 1 else "multilogin")
+        engine = self.browser_engine_selector.itemData(index) or ("morelogin" if index == 2 else ("adspower" if index == 1 else "multilogin"))
         self.engine_stack.setCurrentIndex(index)
         self.config = AppConfig.load().with_browser_engine(engine)
         self.config.save()
         LOGGER.info("Browser engine switched to: %s", engine)
-        if engine == "multilogin":
+        if engine == "morelogin":
+            self._populate_morelogin_profiles()
+        elif engine == "multilogin":
             if self.multilogin_profile_input.count() == 0:
                 self._populate_multilogin_profiles()
         else:
             if self.adspower_profile_input.count() == 0:
                 self._populate_adspower_profiles()
 
+    def _populate_morelogin_profiles(self, *, show_errors: bool = False):
+        selected = self.config.morelogin
+        self.morelogin_profile_input.blockSignals(True)
+        self.morelogin_profile_input.clear()
+
+        profiles: list[MoreLoginProfile] = []
+        api_success = False
+        try:
+            mgr = MoreLoginBrowserManager(selected.api_base)
+            profiles = mgr.list_profiles()
+            api_success = True
+        except MoreLoginApiError as exc:
+            LOGGER.warning("Could not load MoreLogin profiles: %s", exc)
+            if show_errors:
+                QMessageBox.warning(
+                    self,
+                    "MoreLogin Profiles",
+                    f"Could not load profiles from MoreLogin.\n\n{exc}\n\n"
+                    "Make sure MoreLogin Client is running and Local API is enabled (port 40000).",
+                )
+
+        if not profiles and not api_success and selected.identifier:
+            profiles = [
+                MoreLoginProfile(
+                    profile_id=selected.profile_id,
+                    name=selected.profile_name or "Saved profile",
+                )
+            ]
+
+        selected_index = 0
+        for profile in profiles:
+            self.morelogin_profile_input.addItem(profile.label(), profile)
+            if selected.profile_id and profile.profile_id == selected.profile_id:
+                selected_index = self.morelogin_profile_input.count() - 1
+
+        if profiles:
+            self.morelogin_profile_input.setCurrentIndex(selected_index)
+        self.morelogin_profile_input.blockSignals(False)
+        LOGGER.info("Loaded %d MoreLogin profile(s).", len(profiles))
+
+        if profiles:
+            self.on_morelogin_profile_selected(self.morelogin_profile_input.currentIndex())
+
+    def refresh_morelogin_profiles(self):
+        self._populate_morelogin_profiles(show_errors=True)
+        LOGGER.info("MoreLogin profiles refreshed.")
+
+    def _selected_morelogin_profile(self) -> MoreLoginProfile | None:
+        data = self.morelogin_profile_input.currentData()
+        if isinstance(data, MoreLoginProfile):
+            return data
+        return None
+
+    def _selected_morelogin_settings(self) -> MoreLoginSettings:
+        profile = self._selected_morelogin_profile()
+        base = self.config.morelogin
+        if not profile:
+            return base
+        return MoreLoginSettings(
+            api_base=base.api_base,
+            profile_id=profile.profile_id,
+            profile_name=profile.name,
+            cdp_evasion=base.cdp_evasion,
+            close_on_stop=base.close_on_stop,
+        )
+
+    def on_morelogin_profile_selected(self, _index: int):
+        profile = self._selected_morelogin_profile()
+        if not profile:
+            return
+        LOGGER.info("MoreLogin profile selected: %s", profile.label())
+        morelogin_settings = self._selected_morelogin_settings()
+        if morelogin_settings.identifier:
+            self.config = AppConfig.load().with_morelogin(morelogin_settings)
+            self.config.save()
+
     def _populate_adspower_profiles(self, *, show_errors: bool = False):
         selected = self.config.adspower
+        if not selected.api_key:
+            tok = detect_local_adspower_token()
+            if tok and hasattr(self, "adspower_token_input"):
+                self.adspower_token_input.setText(tok)
+                selected = self._selected_adspower_settings()
+
         self.adspower_profile_input.blockSignals(True)
         self.adspower_profile_input.clear()
 
@@ -3675,7 +4127,7 @@ class MainWindow(QMainWindow):
                     self,
                     "AdsPower Profiles",
                     f"Could not load profiles from AdsPower.\n\n{exc}\n\n"
-                    "Make sure AdsPower is open and the Local API is enabled.",
+                    "Make sure AdsPower is open and the Local API is enabled (default port 50325).",
                 )
 
         if not profiles and selected.identifier:
@@ -3702,10 +4154,41 @@ class MainWindow(QMainWindow):
         if profiles:
             self.adspower_profile_input.setCurrentIndex(selected_index)
         self.adspower_profile_input.blockSignals(False)
+        LOGGER.info("Loaded %d AdsPower profile(s).", len(profiles))
 
     def refresh_adspower_profiles(self):
         self._populate_adspower_profiles(show_errors=True)
         LOGGER.info("AdsPower profiles refreshed.")
+
+    def auto_detect_adspower(self):
+        LOGGER.info("Scanning for running AdsPower client, port, and security token...")
+        base_url, token, is_live = detect_local_adspower_settings()
+
+        if base_url and hasattr(self, "adspower_api_base_input"):
+            self.adspower_api_base_input.setText(base_url)
+        if token and hasattr(self, "adspower_token_input"):
+            self.adspower_token_input.setText(token)
+
+        adspower_settings = self._selected_adspower_settings()
+        self.config = AppConfig.load().with_adspower(adspower_settings)
+        self.config.save()
+
+        if is_live:
+            LOGGER.info("AdsPower client is running and reachable at %s.", base_url)
+            self._populate_adspower_profiles(show_errors=True)
+            QMessageBox.information(
+                self,
+                "AdsPower Auto-Detect",
+                f"AdsPower detected successfully!\n\nAPI URL: {base_url}\nStatus: Online\nLoaded profiles: {self.adspower_profile_input.count()}",
+            )
+        else:
+            LOGGER.warning("AdsPower Local API not detected on %s.", base_url)
+            QMessageBox.warning(
+                self,
+                "AdsPower Auto-Detect",
+                f"Could not reach AdsPower Local API at {base_url}.\n\n"
+                "Please make sure AdsPower is open and Local API is enabled in AdsPower Settings.",
+            )
 
     def _selected_adspower_profile(self) -> AdsPowerProfile | None:
         data = self.adspower_profile_input.currentData()
@@ -3716,13 +4199,28 @@ class MainWindow(QMainWindow):
     def _selected_adspower_settings(self) -> AdsPowerSettings:
         profile = self._selected_adspower_profile()
         base = self.config.adspower
-        if not profile:
-            return base
+        token_val = self.adspower_token_input.text().strip() if hasattr(self, "adspower_token_input") else base.api_key
+        api_base_val = self.adspower_api_base_input.text().strip() if hasattr(self, "adspower_api_base_input") else base.api_base
+
+        profile_id = profile.profile_id if profile else ""
+        profile_no = profile.profile_no if profile else ""
+
+        if not profile_id and hasattr(self, "adspower_profile_input"):
+            typed = self.adspower_profile_input.currentText().strip()
+            if typed:
+                m = re.search(r"\(([^)]+)\)$", typed)
+                if m:
+                    profile_id = m.group(1).strip()
+                elif typed.isdigit():
+                    profile_no = typed
+                else:
+                    profile_id = typed
+
         return AdsPowerSettings(
-            api_base=base.api_base,
-            profile_id=profile.profile_id,
-            profile_no=profile.profile_no,
-            api_key=base.api_key,
+            api_base=api_base_val or base.api_base,
+            profile_id=profile_id or base.profile_id,
+            profile_no=profile_no or base.profile_no,
+            api_key=token_val,
             api_version=base.api_version,
             close_on_stop=base.close_on_stop,
             cdp_mask=base.cdp_mask,
@@ -3740,6 +4238,22 @@ class MainWindow(QMainWindow):
             self.config = AppConfig.load().with_adspower(adspower_settings)
             self.config.save()
 
+    def on_adspower_profile_text_changed(self, _text: str):
+        adspower_settings = self._selected_adspower_settings()
+        if adspower_settings.identifier:
+            self.config = AppConfig.load().with_adspower(adspower_settings)
+            self.config.save()
+
+    def on_adspower_token_changed(self, _text: str):
+        adspower_settings = self._selected_adspower_settings()
+        self.config = AppConfig.load().with_adspower(adspower_settings)
+        self.config.save()
+
+    def on_adspower_api_base_changed(self, _text: str):
+        adspower_settings = self._selected_adspower_settings()
+        self.config = AppConfig.load().with_adspower(adspower_settings)
+        self.config.save()
+
     def _validate_automation_videos(self, files: list[str]) -> bool:
         labels = ("File 1 / ID document", "File 2 / selfie", "File 3 / liveness")
         missing = [
@@ -3750,8 +4264,8 @@ class MainWindow(QMainWindow):
         if missing:
             QMessageBox.warning(
                 self,
-                "Missing Videos",
-                "All three videos are required:\n" + "\n".join(missing),
+                "Missing Files",
+                "All three media files are required:\n" + "\n".join(missing),
             )
             return False
 
@@ -3759,9 +4273,19 @@ class MainWindow(QMainWindow):
         if len(set(resolved)) != 3:
             QMessageBox.warning(
                 self,
-                "Duplicate Videos",
-                "File 1, File 2, and File 3 must be three different videos.\n"
-                "Using the same video in two slots will fail verification.",
+                "Duplicate Files",
+                "File 1, File 2, and File 3 must be three different files.\n"
+                "Using the same file in two slots will fail verification.",
+            )
+            return False
+
+        from camera_feed_service import IMAGE_SUFFIXES
+        if resolved[2].suffix.lower() in IMAGE_SUFFIXES:
+            QMessageBox.warning(
+                self,
+                "Invalid Liveness File",
+                "File 3 (Liveness) must be a video file (.mp4, .webm, .mov, etc.) with head movement.\n"
+                "A static image cannot be used for liveness verification.",
             )
             return False
 
@@ -3875,11 +4399,12 @@ def main() -> int:
         LOGGER.error("Protection check failed: %s", reason)
         return 1
 
-    ensure_local_auth_server(config.auth)
-
-    auth_session = require_login(config.auth)
-    if not auth_session or not auth_session.is_authenticated:
-        return 1
+    auth_session = None
+    if config.auth.enabled:
+        ensure_local_auth_server(config.auth)
+        auth_session = require_login(config.auth)
+        if not auth_session or not auth_session.is_authenticated:
+            return 1
 
 
     window = MainWindow(auth_session=auth_session)

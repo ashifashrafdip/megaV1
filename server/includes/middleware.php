@@ -47,7 +47,15 @@ function verify_app_api_key(): void
     if ($expected === '') {
         return;
     }
-    $provided = $_SERVER['HTTP_X_APP_KEY'] ?? '';
+    $provided = $_SERVER['HTTP_X_APP_KEY'] ?? $_SERVER['REDIRECT_HTTP_X_APP_KEY'] ?? '';
+    if (!$provided && function_exists('getallheaders')) {
+        $all = getallheaders();
+        $provided = $all['X-App-Key'] ?? $all['x-app-key'] ?? '';
+    }
+    if (!$provided && function_exists('apache_request_headers')) {
+        $all = apache_request_headers();
+        $provided = $all['X-App-Key'] ?? $all['x-app-key'] ?? '';
+    }
     if (!hash_equals($expected, $provided)) {
         json_error('invalid_api_key', 'Invalid application API key', 401);
     }
