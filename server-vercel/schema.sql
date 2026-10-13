@@ -1,146 +1,187 @@
--- Automation Hub Database Schema for PostgreSQL / Neon
--- Compatible with Neon Serverless Postgres
+-- Automation Auth Schema (MySQL 5.7+ / MariaDB 10.3+)
+SET NAMES utf8mb4;
+SET FOREIGN_KEY_CHECKS = 0;
 
 CREATE TABLE IF NOT EXISTS roles (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(32) UNIQUE NOT NULL,
-    label VARCHAR(64) NOT NULL
-);
+    id TINYINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    name VARCHAR(32) NOT NULL,
+    label VARCHAR(64) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_roles_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO roles (id, name, label) VALUES
 (1, 'super_admin', 'Super Admin'),
 (2, 'admin', 'Admin'),
 (3, 'team_member', 'Team Member')
-ON CONFLICT (id) DO UPDATE SET label = EXCLUDED.label;
+ON DUPLICATE KEY UPDATE label=VALUES(label);
 
 CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(64) UNIQUE NOT NULL,
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    username VARCHAR(64) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    role_id SMALLINT NOT NULL DEFAULT 3 REFERENCES roles(id),
-    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'disabled', 'banned')),
+    role_id TINYINT UNSIGNED NOT NULL DEFAULT 3,
+    status ENUM('active','disabled','banned') NOT NULL DEFAULT 'active',
     display_name VARCHAR(128) DEFAULT NULL,
     email VARCHAR(128) DEFAULT NULL,
-    last_login_at TIMESTAMPTZ DEFAULT NULL,
+    last_login_at DATETIME DEFAULT NULL,
     last_login_ip VARCHAR(45) DEFAULT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_users_username (username),
+    KEY idx_users_status (status),
+    KEY idx_users_role (role_id),
+    CONSTRAINT fk_users_role FOREIGN KEY (role_id) REFERENCES roles(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Default super admin: username=superadmin password=Admin@12345
 INSERT INTO users (id, username, password_hash, role_id, status, display_name)
 VALUES (1, 'superadmin', '$2a$10$OKB8Am967zxMhVM03.dvx.1CdXSwqfwWyePBDAl8JJjFzXpylDUCu', 1, 'active', 'Super Admin')
-ON CONFLICT (username) DO NOTHING;
+ON DUPLICATE KEY UPDATE password_hash='$2a$10$OKB8Am967zxMhVM03.dvx.1CdXSwqfwWyePBDAl8JJjFzXpylDUCu', status='active', role_id=1;
 
 CREATE TABLE IF NOT EXISTS licenses (
-    id SERIAL PRIMARY KEY,
-    user_id INT UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'trial', 'revoked')),
-    is_trial SMALLINT NOT NULL DEFAULT 0,
-    starts_at TIMESTAMPTZ DEFAULT NULL,
-    expires_at TIMESTAMPTZ DEFAULT NULL,
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id INT UNSIGNED NOT NULL,
+    status ENUM('active','inactive','trial','revoked') NOT NULL DEFAULT 'active',
+    is_trial TINYINT(1) NOT NULL DEFAULT 0,
+    starts_at DATETIME DEFAULT NULL,
+    expires_at DATETIME DEFAULT NULL,
     notes VARCHAR(255) DEFAULT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_licenses_user (user_id),
+    CONSTRAINT fk_licenses_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Create perpetual license for default superadmin
 INSERT INTO licenses (user_id, status, expires_at)
-VALUES (1, 'active', '2099-12-31 23:59:59+00')
-ON CONFLICT (user_id) DO NOTHING;
+VALUES (1, 'active', '2099-12-31 23:59:59')
+ON DUPLICATE KEY UPDATE status='active', expires_at='2099-12-31 23:59:59';
 
 CREATE TABLE IF NOT EXISTS devices (
-    id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id INT UNSIGNED NOT NULL,
     device_id VARCHAR(128) NOT NULL,
     pc_name VARCHAR(128) DEFAULT NULL,
     fingerprint_hash VARCHAR(128) DEFAULT NULL,
-    is_authorized SMALLINT NOT NULL DEFAULT 1,
-    first_seen_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (user_id, device_id)
-);
+    is_authorized TINYINT(1) NOT NULL DEFAULT 1,
+    first_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_devices_user_device (user_id, device_id),
+    KEY idx_devices_user (user_id),
+    CONSTRAINT fk_devices_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS sessions (
-    id BIGSERIAL PRIMARY KEY,
-    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id INT UNSIGNED NOT NULL,
     session_token_hash VARCHAR(128) NOT NULL,
     refresh_token_hash VARCHAR(128) NOT NULL,
     device_id VARCHAR(128) DEFAULT NULL,
     pc_name VARCHAR(128) DEFAULT NULL,
     ip_address VARCHAR(45) DEFAULT NULL,
     user_agent VARCHAR(255) DEFAULT NULL,
-    is_active SMALLINT NOT NULL DEFAULT 1,
-    force_logout SMALLINT NOT NULL DEFAULT 0,
-    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMPTZ NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_active ON sessions(is_active, last_seen_at);
-CREATE INDEX IF NOT EXISTS idx_sessions_refresh ON sessions(refresh_token_hash);
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    force_logout TINYINT(1) NOT NULL DEFAULT 0,
+    last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_sessions_user (user_id),
+    KEY idx_sessions_active (is_active, last_seen_at),
+    KEY idx_sessions_refresh (refresh_token_hash),
+    CONSTRAINT fk_sessions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS activity_logs (
-    id BIGSERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id) ON DELETE SET NULL,
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id INT UNSIGNED DEFAULT NULL,
     action VARCHAR(64) NOT NULL,
     ip_address VARCHAR(45) DEFAULT NULL,
     device_id VARCHAR(128) DEFAULT NULL,
     pc_name VARCHAR(128) DEFAULT NULL,
     details TEXT DEFAULT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_logs(user_id);
-CREATE INDEX IF NOT EXISTS idx_activity_created ON activity_logs(created_at);
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_activity_user (user_id),
+    KEY idx_activity_action (action),
+    KEY idx_activity_created (created_at),
+    CONSTRAINT fk_activity_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS link_logs (
-    id BIGSERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id) ON DELETE SET NULL,
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id INT UNSIGNED DEFAULT NULL,
     url TEXT NOT NULL,
     browser VARCHAR(64) DEFAULT NULL,
     device_id VARCHAR(128) DEFAULT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_link_user ON link_logs(user_id);
-CREATE INDEX IF NOT EXISTS idx_link_created ON link_logs(created_at);
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_link_user (user_id),
+    KEY idx_link_created (created_at),
+    CONSTRAINT fk_link_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS login_history (
-    id BIGSERIAL PRIMARY KEY,
-    user_id INT DEFAULT NULL,
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id INT UNSIGNED DEFAULT NULL,
     username VARCHAR(64) DEFAULT NULL,
-    success SMALLINT NOT NULL DEFAULT 0,
+    success TINYINT(1) NOT NULL DEFAULT 0,
     ip_address VARCHAR(45) DEFAULT NULL,
     device_id VARCHAR(128) DEFAULT NULL,
     pc_name VARCHAR(128) DEFAULT NULL,
     reason VARCHAR(128) DEFAULT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS idx_login_user ON login_history(user_id);
-CREATE INDEX IF NOT EXISTS idx_login_created ON login_history(created_at);
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_login_user (user_id),
+    KEY idx_login_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS heartbeat_logs (
-    id BIGSERIAL PRIMARY KEY,
-    user_id INT DEFAULT NULL,
-    session_id BIGINT DEFAULT NULL,
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id INT UNSIGNED DEFAULT NULL,
+    session_id BIGINT UNSIGNED DEFAULT NULL,
     status VARCHAR(32) NOT NULL,
     ip_address VARCHAR(45) DEFAULT NULL,
     device_id VARCHAR(128) DEFAULT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_heartbeat_user (user_id),
+    KEY idx_heartbeat_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE INDEX IF NOT EXISTS idx_heartbeat_user ON heartbeat_logs(user_id);
-CREATE INDEX IF NOT EXISTS idx_heartbeat_created ON heartbeat_logs(created_at);
+CREATE TABLE IF NOT EXISTS notifications (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    user_id INT UNSIGNED DEFAULT NULL,
+    title VARCHAR(128) NOT NULL,
+    message TEXT NOT NULL,
+    is_read TINYINT(1) NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_notifications_user (user_id),
+    CONSTRAINT fk_notifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS api_keys (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    name VARCHAR(64) NOT NULL,
+    key_hash VARCHAR(128) NOT NULL,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_api_keys_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS settings (
-    id SERIAL PRIMARY KEY,
-    setting_key VARCHAR(64) UNIQUE NOT NULL,
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    setting_key VARCHAR(64) NOT NULL,
     setting_value TEXT NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_settings_key (setting_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO settings (setting_key, setting_value) VALUES
 ('heartbeat_interval', '45'),
@@ -148,18 +189,15 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('offline_grace_seconds', '300'),
 ('single_session', '1'),
 ('app_name', 'Automation Hub')
-ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value;
+ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value);
 
 CREATE TABLE IF NOT EXISTS rate_limits (
-    id BIGSERIAL PRIMARY KEY,
-    rate_key VARCHAR(128) UNIQUE NOT NULL,
-    hits INT NOT NULL DEFAULT 1,
-    window_start TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    rate_key VARCHAR(128) NOT NULL,
+    hits INT UNSIGNED NOT NULL DEFAULT 1,
+    window_start DATETIME NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY uq_rate_key (rate_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Synchronize SERIAL sequences with seeded rows to prevent duplicate key errors
-SELECT setval('users_id_seq', GREATEST((SELECT COALESCE(MAX(id), 1) FROM users), 1));
-SELECT setval('roles_id_seq', GREATEST((SELECT COALESCE(MAX(id), 1) FROM roles), 3));
-SELECT setval('licenses_id_seq', GREATEST((SELECT COALESCE(MAX(id), 1) FROM licenses), 1));
-SELECT setval('settings_id_seq', GREATEST((SELECT COALESCE(MAX(id), 1) FROM settings), 1));
-
+SET FOREIGN_KEY_CHECKS = 1;

@@ -1,8 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const { Client } = require('pg');
+const mysql = require('mysql2/promise');
 
-// Simple .env parser if dotenv is not installed
 function loadEnv() {
   const envPath = path.join(__dirname, '..', '.env');
   if (fs.existsSync(envPath)) {
@@ -27,37 +26,38 @@ function loadEnv() {
 
 async function main() {
   loadEnv();
-  const dbUrl =
-    process.env.DATABASE_URL ||
-    process.env.POSTGRES_URL ||
-    'postgresql://neondb_owner:npg_GHlkmV5Ii9tC@ep-lingering-credit-avo41viw-pooler.c-11.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
+  const host = process.env.DB_HOST || 'localhost';
+  const user = process.env.DB_USER || 'ashifash_auth';
+  const password = process.env.DB_PASSWORD || 'AuthDbPass@2026!#Mega';
+  const database = process.env.DB_NAME || 'ashifash_auth';
+  const port = parseInt(process.env.DB_PORT || '3306', 10);
 
-  console.log('🔄 Connecting to Neon PostgreSQL...');
-
-
-  const client = new Client({
-    connectionString: dbUrl,
-    ssl: { rejectUnauthorized: false }
-  });
+  console.log(`🔄 Connecting to MySQL (${user}@${host}:${port}/${database})...`);
 
   try {
-    await client.connect();
-    console.log('✅ Connected successfully.');
+    const conn = await mysql.createConnection({
+      host,
+      user,
+      password,
+      database,
+      port,
+      multipleStatements: true
+    });
+    console.log('✅ Connected successfully to MySQL.');
 
     const schemaPath = path.join(__dirname, '..', 'schema.sql');
     const sql = fs.readFileSync(schemaPath, 'utf-8');
 
-    console.log('🔄 Executing schema.sql...');
-    await client.query(sql);
-    console.log('\n🎉 Database initialized successfully!');
-    console.log('Default super admin created:');
+    console.log('🔄 Executing MySQL schema.sql...');
+    await conn.query(sql);
+    console.log('\n🎉 MySQL Database initialized successfully!');
+    console.log('Default super admin created/updated:');
     console.log('  Username: superadmin');
     console.log('  Password: Admin@12345\n');
+    await conn.end();
   } catch (err) {
-    console.error('❌ Failed to initialize database:', err);
+    console.error('❌ Failed to initialize MySQL database:', err);
     process.exit(1);
-  } finally {
-    await client.end();
   }
 }
 

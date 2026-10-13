@@ -191,8 +191,7 @@ export async function upsertDevice(userId: number, deviceId: string, pcName: str
   await query(
     `INSERT INTO devices (user_id, device_id, pc_name, is_authorized, last_seen_at)
      VALUES ($1, $2, $3, 1, CURRENT_TIMESTAMP)
-     ON CONFLICT (user_id, device_id)
-     DO UPDATE SET pc_name = COALESCE(EXCLUDED.pc_name, devices.pc_name), last_seen_at = CURRENT_TIMESTAMP`,
+     ON DUPLICATE KEY UPDATE pc_name = COALESCE(VALUES(pc_name), devices.pc_name), last_seen_at = CURRENT_TIMESTAMP`,
     [userId, deviceId, pcName]
   );
 }

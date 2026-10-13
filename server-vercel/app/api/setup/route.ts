@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     await query(sql);
 
     return jsonOk({
-      message: 'Database schema initialized successfully on Neon PostgreSQL!',
+      message: 'Database schema initialized successfully on cPanel MySQL!',
       default_admin: {
         username: 'superadmin',
         password: 'Admin@12345',

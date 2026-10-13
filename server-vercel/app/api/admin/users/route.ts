@@ -193,8 +193,7 @@ export async function POST(req: NextRequest) {
         await query(
           `INSERT INTO licenses (user_id, status, expires_at, updated_at)
            VALUES ($1, $2, $3, NOW())
-           ON CONFLICT (user_id)
-           DO UPDATE SET status = EXCLUDED.status, expires_at = EXCLUDED.expires_at, updated_at = NOW()`,
+           ON DUPLICATE KEY UPDATE status = VALUES(status), expires_at = VALUES(expires_at), updated_at = NOW()`,
           [userId, licenseStatus, expires]
         );
         await logActivity(admin.id, 'update_license', null, null, `user_id=${userId}`, ip);

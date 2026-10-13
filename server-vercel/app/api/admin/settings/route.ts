@@ -58,8 +58,7 @@ export async function POST(req: NextRequest) {
         await query(
           `INSERT INTO settings (setting_key, setting_value, updated_at)
            VALUES ($1, $2, NOW())
-           ON CONFLICT (setting_key)
-           DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = NOW()`,
+           ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_at = NOW()`,
           [key, val]
         );
       }
